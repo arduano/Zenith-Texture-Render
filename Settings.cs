@@ -12,7 +12,7 @@ namespace TexturedRender
         public int lastNote = 128;
         public double deltaTimeOnScreen = 294.067;
         public bool sameWidthNotes = true;
-        public bool blackNotesAbove = false;
+        public bool blackNotesAbove = true;
 
         public string palette = "Random";
 

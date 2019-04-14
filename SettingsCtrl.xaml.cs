@@ -70,6 +70,13 @@ namespace TexturedRender
 
         void ReloadPacks()
         {
+            TextureShaderType strToShader(string s)
+            {
+                if (s == "normal") return TextureShaderType.Normal;
+                if (s == "inverse") return TextureShaderType.Inverted;
+                if (s == "hybrid") return TextureShaderType.Hybrid;
+                throw new Exception("Unknown shader type \"" + s + "\"");
+            }
             int lastSelected = pluginList.SelectedIndex;
             string lastSelectedName;
             if (lastSelected == -1)
@@ -103,14 +110,14 @@ namespace TexturedRender
             string dir = "Plugins\\Assets\\Textured\\Resources";
             string[] packs = Directory.GetDirectories(dir);
             resourcePacks.Clear();
-            foreach(var r in resourcePacks)
+            foreach (var r in resourcePacks)
             {
                 r.whiteKeyTex.Dispose();
                 r.blackKeyTex.Dispose();
                 r.whiteKeyPressedTex.Dispose();
                 r.blackKeyPressedTex.Dispose();
                 r.preview.Dispose();
-                foreach(var n in r.NoteTextures)
+                foreach (var n in r.NoteTextures)
                 {
                     n.noteMiddleTex.Dispose();
                     n.noteBottomTex.Dispose();
@@ -151,7 +158,7 @@ namespace TexturedRender
 
                     try
                     {
-                        pack.keyboardHeight = data.keyboardHeight;
+                        pack.keyboardHeight = (double)data.keyboardHeight / 100;
                     }
                     catch { }
                     try
@@ -159,6 +166,48 @@ namespace TexturedRender
                         pack.sameWidthNotes = data.sameWidthNotes;
                     }
                     catch { }
+                    try
+                    {
+                        pack.blackKeysFullOctave = data.blackKeysFullOctave;
+                    }
+                    catch { }
+                    try
+                    {
+                        pack.whiteKeysFullOctave = data.whiteKeysFullOctave;
+                    }
+                    catch { }
+                    try
+                    {
+                        pack.blackKeyHeight = (double)data.blackKeyHeight / 100;
+                    }
+                    catch { }
+                    try
+                    {
+                        pack.blackKeyDefaultWhite = data.blackKeysWhiteShade;
+                    }
+                    catch { }
+
+                    string shader = null;
+                    try
+                    {
+                        shader = data.noteShader;
+                    }
+                    catch { }
+                    if (shader != null) pack.noteShader = strToShader(shader);
+                    shader = "";
+                    try
+                    {
+                        shader = data.whiteKeyShader;
+                    }
+                    catch { }
+                    if (shader != null) pack.whiteKeyShader = strToShader(shader);
+                    shader = null;
+                    try
+                    {
+                        shader = data.blackKeyShader;
+                    }
+                    catch { }
+                    if (shader != null) pack.blackKeyShader = strToShader(shader);
 
                     #region Get Keys
                     try
@@ -186,6 +235,46 @@ namespace TexturedRender
                     catch { throw new Exception("Missing property \"whiteKeyPressed\""); }
                     pack.whiteKeyPressedTex = GetBitmap(Path.Combine(p, pname));
                     #endregion
+
+                    #region Oversizes
+                    try
+                    {
+                        pack.whiteKeyOversize = (double)data.whiteKeyOversize / 100;
+                    }
+                    catch { }
+                    try
+                    {
+                        pack.blackKeyOversize = (double)data.blackKeyOversize / 100;
+                    }
+                    catch { }
+                    try
+                    {
+                        pack.whiteKeyPressedOversize = (double)data.whiteKeyPressedOversize / 100;
+                    }
+                    catch { }
+                    try
+                    {
+                        pack.blackKeyPressedOversize = (double)data.blackKeyPressedOversize / 100;
+                    }
+                    catch { }
+                    #endregion
+
+                    try
+                    {
+                        pname = data.bar;
+                        pack.barTex = GetBitmap(Path.Combine(p, pname));
+                        pack.useBar = true;
+                    }
+                    catch { }
+
+                    if (pack.useBar)
+                    {
+                        try
+                        {
+                            pack.barHeight = (double)data.barHeight / 100;
+                        }
+                        catch { }
+                    }
 
                     JArray noteSizes;
                     try
@@ -349,7 +438,7 @@ namespace TexturedRender
                 screenTimeLock = false;
             }
         }
-        
+
         private void BlackNotesAbove_Checked(object sender, RoutedEventArgs e)
         {
             if (!inited) return;
