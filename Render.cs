@@ -51,7 +51,7 @@ out vec4 out_color;
 
 void main()
 {
-    vec4 col = texture2D( textureSamplers[int(texid)], uv );
+    vec4 col = texture2D( textureSamplers[int(round(texid))], uv );
     out_color = col * v2f_color;
 }
 ";
@@ -67,7 +67,7 @@ out vec4 out_color;
 
 void main()
 {
-    vec4 col = texture2D( textureSamplers[int(texid)], uv );
+    vec4 col = texture2D( textureSamplers[int(round(texid))], uv );
     col = 1 - col;
     col.w = 1 - col.w;
     vec4 col2 = 1 - v2f_color;
@@ -88,7 +88,7 @@ out vec4 out_color;
 
 void main()
 {
-    vec4 col = texture2D( textureSamplers[int(texid)], uv );
+    vec4 col = texture2D( textureSamplers[int(round(texid))], uv );
     col = col * 2;
     if(col.x > 1){
         out_color.x = 1 - (2 - col.x) * (1 - v2f_color.x);
@@ -393,7 +393,7 @@ void main()
             int kbfirstNote = settings.firstNote;
             int kblastNote = settings.lastNote;
             if (blackKeys[firstNote]) kbfirstNote--;
-            if (blackKeys[lastNote - 1]) kblastNote++;
+            kblastNote++;
 
             double deltaTimeOnScreen = NoteScreenTime;
             double keyboardHeightFull = currPack.keyboardHeight / (lastNote - firstNote) * 128;
@@ -475,9 +475,9 @@ void main()
                 if (noteTextures[i].useCaps)
                 {
                     GL.ActiveTexture(TextureUnit.Texture0 + (i * 3) + 1);
-                    GL.BindTexture(TextureTarget.Texture2D, noteTextures[i].noteTopTexID);
-                    GL.ActiveTexture(TextureUnit.Texture0 + (i * 3) + 2);
                     GL.BindTexture(TextureTarget.Texture2D, noteTextures[i].noteBottomTexID);
+                    GL.ActiveTexture(TextureUnit.Texture0 + (i * 3) + 2);
+                    GL.BindTexture(TextureTarget.Texture2D, noteTextures[i].noteTopTexID);
                 }
             }
             SwitchShader(currPack.noteShader);
@@ -579,10 +579,29 @@ void main()
                             quadVertexbuff[pos++] = y2;
 
                             pos = quadBufferPos * 16;
-                            r = coll.R;
-                            g = coll.G;
-                            b = coll.B;
-                            a = coll.A;
+                            if (black)
+                            {
+                                float multiply = (float)currNoteTex.darkenBlackNotes;
+                                r = coll.R * multiply;
+                                g = coll.G * multiply;
+                                b = coll.B * multiply;
+                                a = coll.A;
+                                r2 = colr.R * multiply;
+                                g2 = colr.G * multiply;
+                                b2 = colr.B * multiply;
+                                a2 = colr.A;
+                            }
+                            else
+                            {
+                                r = coll.R;
+                                g = coll.G;
+                                b = coll.B;
+                                a = coll.A;
+                                r2 = colr.R;
+                                g2 = colr.G;
+                                b2 = colr.B;
+                                a2 = colr.A;
+                            }
                             quadColorbuff[pos++] = r;
                             quadColorbuff[pos++] = g;
                             quadColorbuff[pos++] = b;
@@ -591,18 +610,14 @@ void main()
                             quadColorbuff[pos++] = g;
                             quadColorbuff[pos++] = b;
                             quadColorbuff[pos++] = a;
-                            r = colr.R;
-                            g = colr.G;
-                            b = colr.B;
-                            a = colr.A;
-                            quadColorbuff[pos++] = r;
-                            quadColorbuff[pos++] = g;
-                            quadColorbuff[pos++] = b;
-                            quadColorbuff[pos++] = a;
-                            quadColorbuff[pos++] = r;
-                            quadColorbuff[pos++] = g;
-                            quadColorbuff[pos++] = b;
-                            quadColorbuff[pos++] = a;
+                            quadColorbuff[pos++] = r2;
+                            quadColorbuff[pos++] = g2;
+                            quadColorbuff[pos++] = b2;
+                            quadColorbuff[pos++] = a2;
+                            quadColorbuff[pos++] = r2;
+                            quadColorbuff[pos++] = g2;
+                            quadColorbuff[pos++] = b2;
+                            quadColorbuff[pos++] = a2;
 
                             pos = quadBufferPos * 8;
                             quadUVbuff[pos++] = 1;
@@ -636,10 +651,6 @@ void main()
                                 quadVertexbuff[pos++] = yy2;
 
                                 pos = quadBufferPos * 16;
-                                r = coll.R;
-                                g = coll.G;
-                                b = coll.B;
-                                a = coll.A;
                                 quadColorbuff[pos++] = r;
                                 quadColorbuff[pos++] = g;
                                 quadColorbuff[pos++] = b;
@@ -648,28 +659,24 @@ void main()
                                 quadColorbuff[pos++] = g;
                                 quadColorbuff[pos++] = b;
                                 quadColorbuff[pos++] = a;
-                                r = colr.R;
-                                g = colr.G;
-                                b = colr.B;
-                                a = colr.A;
-                                quadColorbuff[pos++] = r;
-                                quadColorbuff[pos++] = g;
-                                quadColorbuff[pos++] = b;
-                                quadColorbuff[pos++] = a;
-                                quadColorbuff[pos++] = r;
-                                quadColorbuff[pos++] = g;
-                                quadColorbuff[pos++] = b;
-                                quadColorbuff[pos++] = a;
+                                quadColorbuff[pos++] = r2;
+                                quadColorbuff[pos++] = g2;
+                                quadColorbuff[pos++] = b2;
+                                quadColorbuff[pos++] = a2;
+                                quadColorbuff[pos++] = r2;
+                                quadColorbuff[pos++] = g2;
+                                quadColorbuff[pos++] = b2;
+                                quadColorbuff[pos++] = a2;
 
                                 pos = quadBufferPos * 8;
                                 quadUVbuff[pos++] = 1;
-                                quadUVbuff[pos++] = 0;
                                 quadUVbuff[pos++] = 1;
                                 quadUVbuff[pos++] = 1;
                                 quadUVbuff[pos++] = 0;
+                                quadUVbuff[pos++] = 0;
+                                quadUVbuff[pos++] = 0;
+                                quadUVbuff[pos++] = 0;
                                 quadUVbuff[pos++] = 1;
-                                quadUVbuff[pos++] = 0;
-                                quadUVbuff[pos++] = 0;
 
                                 pos = quadBufferPos * 4;
                                 tex++;
@@ -692,10 +699,6 @@ void main()
                                 quadVertexbuff[pos++] = y1;
 
                                 pos = quadBufferPos * 16;
-                                r = coll.R;
-                                g = coll.G;
-                                b = coll.B;
-                                a = coll.A;
                                 quadColorbuff[pos++] = r;
                                 quadColorbuff[pos++] = g;
                                 quadColorbuff[pos++] = b;
@@ -704,28 +707,24 @@ void main()
                                 quadColorbuff[pos++] = g;
                                 quadColorbuff[pos++] = b;
                                 quadColorbuff[pos++] = a;
-                                r = colr.R;
-                                g = colr.G;
-                                b = colr.B;
-                                a = colr.A;
-                                quadColorbuff[pos++] = r;
-                                quadColorbuff[pos++] = g;
-                                quadColorbuff[pos++] = b;
-                                quadColorbuff[pos++] = a;
-                                quadColorbuff[pos++] = r;
-                                quadColorbuff[pos++] = g;
-                                quadColorbuff[pos++] = b;
-                                quadColorbuff[pos++] = a;
+                                quadColorbuff[pos++] = r2;
+                                quadColorbuff[pos++] = g2;
+                                quadColorbuff[pos++] = b2;
+                                quadColorbuff[pos++] = a2;
+                                quadColorbuff[pos++] = r2;
+                                quadColorbuff[pos++] = g2;
+                                quadColorbuff[pos++] = b2;
+                                quadColorbuff[pos++] = a2;
 
                                 pos = quadBufferPos * 8;
                                 quadUVbuff[pos++] = 1;
-                                quadUVbuff[pos++] = 0;
                                 quadUVbuff[pos++] = 1;
                                 quadUVbuff[pos++] = 1;
                                 quadUVbuff[pos++] = 0;
+                                quadUVbuff[pos++] = 0;
+                                quadUVbuff[pos++] = 0;
+                                quadUVbuff[pos++] = 0;
                                 quadUVbuff[pos++] = 1;
-                                quadUVbuff[pos++] = 0;
-                                quadUVbuff[pos++] = 0;
 
                                 pos = quadBufferPos * 4;
                                 tex++;

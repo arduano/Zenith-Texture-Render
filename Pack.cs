@@ -19,6 +19,9 @@ namespace TexturedRender
         public double maxSize;
         public bool useCaps;
         public bool stretch;
+
+        public double darkenBlackNotes = 1;
+
         public double noteMiddleAspect;
         public Bitmap noteMiddleTex;
         public int noteMiddleTexID;

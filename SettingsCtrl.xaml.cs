@@ -313,6 +313,12 @@ namespace TexturedRender
                         tex.noteMiddleTex = GetBitmap(Path.Combine(p, pname));
                         tex.noteMiddleAspect = (double)tex.noteMiddleTex.Height / tex.noteMiddleTex.Width;
 
+                        try
+                        {
+                            tex.darkenBlackNotes = (double)s.darkenBlackNotes;
+                        }
+                        catch { }
+
                         if (tex.useCaps)
                         {
                             try
