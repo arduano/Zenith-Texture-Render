@@ -56,12 +56,15 @@ namespace TexturedRender
         public Bitmap whiteKeyTex;
         public int whiteKeyTexID;
         public double whiteKeyOversize = 0;
+
         public Bitmap blackKeyTex;
         public int blackKeyTexID;
         public double blackKeyOversize = 0;
+
         public Bitmap whiteKeyPressedTex;
         public int whiteKeyPressedTexID;
         public double whiteKeyPressedOversize = 0;
+
         public Bitmap blackKeyPressedTex;
         public int blackKeyPressedTexID;
         public double blackKeyPressedOversize = 0;

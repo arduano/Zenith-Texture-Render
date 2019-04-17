@@ -9,11 +9,31 @@ using OpenTK.Graphics;
 using OpenTK;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Windows.Media.Imaging;
+using System.IO;
 
 namespace TexturedRender
 {
     public class Render : IPluginRender
     {
+        #region PreviewConvert
+        BitmapImage BitmapToImageSource(Bitmap bitmap)
+        {
+            using (MemoryStream memory = new MemoryStream())
+            {
+                bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
+                memory.Position = 0;
+                BitmapImage bitmapimage = new BitmapImage();
+                bitmapimage.BeginInit();
+                bitmapimage.StreamSource = memory;
+                bitmapimage.CacheOption = BitmapCacheOption.OnLoad;
+                bitmapimage.EndInit();
+
+                return bitmapimage;
+            }
+        }
+        #endregion
+
         public string Name => "Textured";
 
         public string Description => "Plugin for loading and rendering custom resource packs, " +
@@ -45,13 +65,36 @@ in vec4 v2f_color;
 in vec2 uv;
 in float texid;
 
-uniform sampler2D textureSamplers[12];
+uniform sampler2D textureSampler1;
+uniform sampler2D textureSampler2;
+uniform sampler2D textureSampler3;
+uniform sampler2D textureSampler4;
+uniform sampler2D textureSampler5;
+uniform sampler2D textureSampler6;
+uniform sampler2D textureSampler7;
+uniform sampler2D textureSampler8;
+uniform sampler2D textureSampler9;
+uniform sampler2D textureSampler10;
+uniform sampler2D textureSampler11;
+uniform sampler2D textureSampler12;
 
 out vec4 out_color;
 
 void main()
 {
-    vec4 col = texture2D( textureSamplers[int(round(texid))], uv );
+    vec4 col;
+    if(texid < 0.5) col = texture2D( textureSampler1, uv );
+    else if(texid < 1.5) col = texture2D( textureSampler2, uv );
+    else if(texid < 2.5) col = texture2D( textureSampler3, uv );
+    else if(texid < 3.5) col = texture2D( textureSampler4, uv );
+    else if(texid < 4.5) col = texture2D( textureSampler5, uv );
+    else if(texid < 5.5) col = texture2D( textureSampler6, uv );
+    else if(texid < 6.5) col = texture2D( textureSampler7, uv );
+    else if(texid < 7.5) col = texture2D( textureSampler8, uv );
+    else if(texid < 8.5) col = texture2D( textureSampler9, uv );
+    else if(texid < 9.5) col = texture2D( textureSampler10, uv );
+    else if(texid < 10.5) col = texture2D( textureSampler11, uv );
+    else if(texid < 11.5) col = texture2D( textureSampler12, uv );
     out_color = col * v2f_color;
 }
 ";
@@ -61,13 +104,36 @@ in vec4 v2f_color;
 in vec2 uv;
 in float texid;
 
-uniform sampler2D textureSamplers[12];
+uniform sampler2D textureSampler1;
+uniform sampler2D textureSampler2;
+uniform sampler2D textureSampler3;
+uniform sampler2D textureSampler4;
+uniform sampler2D textureSampler5;
+uniform sampler2D textureSampler6;
+uniform sampler2D textureSampler7;
+uniform sampler2D textureSampler8;
+uniform sampler2D textureSampler9;
+uniform sampler2D textureSampler10;
+uniform sampler2D textureSampler11;
+uniform sampler2D textureSampler12;
 
 out vec4 out_color;
 
 void main()
 {
-    vec4 col = texture2D( textureSamplers[int(round(texid))], uv );
+    vec4 col;
+    if(texid < 0.5) col = texture2D( textureSampler1, uv );
+    else if(texid < 1.5) col = texture2D( textureSampler2, uv );
+    else if(texid < 2.5) col = texture2D( textureSampler3, uv );
+    else if(texid < 3.5) col = texture2D( textureSampler4, uv );
+    else if(texid < 4.5) col = texture2D( textureSampler5, uv );
+    else if(texid < 5.5) col = texture2D( textureSampler6, uv );
+    else if(texid < 6.5) col = texture2D( textureSampler7, uv );
+    else if(texid < 7.5) col = texture2D( textureSampler8, uv );
+    else if(texid < 8.5) col = texture2D( textureSampler9, uv );
+    else if(texid < 9.5) col = texture2D( textureSampler10, uv );
+    else if(texid < 10.5) col = texture2D( textureSampler11, uv );
+    else if(texid < 11.5) col = texture2D( textureSampler12, uv );
     col = 1 - col;
     col.w = 1 - col.w;
     vec4 col2 = 1 - v2f_color;
@@ -82,13 +148,36 @@ in vec4 v2f_color;
 in vec2 uv;
 in float texid;
 
-uniform sampler2D textureSamplers[12];
+uniform sampler2D textureSampler1;
+uniform sampler2D textureSampler2;
+uniform sampler2D textureSampler3;
+uniform sampler2D textureSampler4;
+uniform sampler2D textureSampler5;
+uniform sampler2D textureSampler6;
+uniform sampler2D textureSampler7;
+uniform sampler2D textureSampler8;
+uniform sampler2D textureSampler9;
+uniform sampler2D textureSampler10;
+uniform sampler2D textureSampler11;
+uniform sampler2D textureSampler12;
 
 out vec4 out_color;
 
 void main()
 {
-    vec4 col = texture2D( textureSamplers[int(round(texid))], uv );
+    vec4 col;
+    if(texid < 0.5) col = texture2D( textureSampler1, uv );
+    else if(texid < 1.5) col = texture2D( textureSampler2, uv );
+    else if(texid < 2.5) col = texture2D( textureSampler3, uv );
+    else if(texid < 3.5) col = texture2D( textureSampler4, uv );
+    else if(texid < 4.5) col = texture2D( textureSampler5, uv );
+    else if(texid < 5.5) col = texture2D( textureSampler6, uv );
+    else if(texid < 6.5) col = texture2D( textureSampler7, uv );
+    else if(texid < 7.5) col = texture2D( textureSampler8, uv );
+    else if(texid < 8.5) col = texture2D( textureSampler9, uv );
+    else if(texid < 9.5) col = texture2D( textureSampler10, uv );
+    else if(texid < 10.5) col = texture2D( textureSampler11, uv );
+    else if(texid < 11.5) col = texture2D( textureSampler12, uv );
     col = col * 2;
     if(col.x > 1){
         out_color.x = 1 - (2 - col.x) * (1 - v2f_color.x);
@@ -288,8 +377,7 @@ void main()
             this.settings = new Settings();
             this.renderSettings = settings;
             SettingsControl = new SettingsCtrl(this.settings);
-            //PreviewImage = BitmapToImageSource(Properties.Resources.preview);
-            PreviewImage = null;
+            PreviewImage = BitmapToImageSource(Properties.Resources.pluginPreview);
 
             for (int i = 0; i < blackKeys.Length; i++) blackKeys[i] = isBlackNote(i);
             int b = 0;
@@ -313,15 +401,25 @@ void main()
             {
                 samplers[i] = i;
             }
+
             GL.UseProgram(quadShader);
-            loc = GL.GetUniformLocation(quadShader, "textureSamplers");
-            GL.Uniform1(loc, 12, samplers);
+            for(int i = 0; i < 12; i++)
+            {
+                loc = GL.GetUniformLocation(quadShader, "textureSampler" + (i + 1));
+                GL.Uniform1(loc, i);
+            }
             GL.UseProgram(inverseQuadShader);
-            loc = GL.GetUniformLocation(inverseQuadShader, "textureSamplers");
-            GL.Uniform1(loc, 12, samplers);
+            for (int i = 0; i < 12; i++)
+            {
+                loc = GL.GetUniformLocation(inverseQuadShader, "textureSampler" + (i + 1));
+                GL.Uniform1(loc, i);
+            }
             GL.UseProgram(evenquadShader);
-            loc = GL.GetUniformLocation(evenquadShader, "textureSamplers");
-            GL.Uniform1(loc, 12, samplers);
+            for (int i = 0; i < 12; i++)
+            {
+                loc = GL.GetUniformLocation(evenquadShader, "textureSampler" + (i + 1));
+                GL.Uniform1(loc, i);
+            }
 
             quadVertexbuff = new double[quadBufferLength * 8];
             quadColorbuff = new float[quadBufferLength * 16];

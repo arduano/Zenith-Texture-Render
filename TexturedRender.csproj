@@ -128,21 +128,6 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\256073095b7ea40077f71e72e83165f9.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\keyWhitePressed.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\keyBlack.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\keyBlackPressed.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\keyWhite.png" />
-  </ItemGroup>
-  <ItemGroup>
     <EmbeddedResource Include="Languages\en\textured.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -155,6 +140,30 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\note.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\noteEdge.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\bar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\keyBlack.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\keyBlackPressed.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\keyWhite.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\keyWhitePressed.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\preview.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\pluginPreview.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

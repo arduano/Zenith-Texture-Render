@@ -63,6 +63,16 @@ namespace TexturedRender.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap bar {
+            get {
+                object obj = ResourceManager.GetObject("bar", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap keyBlack {
             get {
                 object obj = ResourceManager.GetObject("keyBlack", resourceCulture);
@@ -111,12 +121,52 @@ namespace TexturedRender.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap noteEdge {
+            get {
+                object obj = ResourceManager.GetObject("noteEdge", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
         internal static byte[] pack {
             get {
                 object obj = ResourceManager.GetObject("pack", resourceCulture);
                 return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] pack1 {
+            get {
+                object obj = ResourceManager.GetObject("pack1", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap pluginPreview {
+            get {
+                object obj = ResourceManager.GetObject("pluginPreview", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap preview {
+            get {
+                object obj = ResourceManager.GetObject("preview", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
     }

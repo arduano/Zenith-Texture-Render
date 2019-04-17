@@ -60,11 +60,14 @@ namespace TexturedRender
         {
             string dir = "Plugins\\Assets\\Textured\\Resources\\Default";
             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-            Properties.Resources.keyBlack.Save(dir + "\\blackKey.png");
-            Properties.Resources.keyBlackPressed.Save(dir + "\\blackKeyPressed.png");
-            Properties.Resources.keyWhite.Save(dir + "\\whiteKey.png");
-            Properties.Resources.keyWhitePressed.Save(dir + "\\whiteKeyPressed.png");
+            Properties.Resources.keyBlack.Save(dir + "\\keyBlack.png");
+            Properties.Resources.keyBlackPressed.Save(dir + "\\keyBlackPressed.png");
+            Properties.Resources.keyWhite.Save(dir + "\\keyWhite.png");
+            Properties.Resources.keyWhitePressed.Save(dir + "\\keyWhitePressed.png");
             Properties.Resources.note.Save(dir + "\\note.png");
+            Properties.Resources.bar.Save(dir + "\\bar.png");
+            Properties.Resources.noteEdge.Save(dir + "\\noteEdge.png");
+            Properties.Resources.preview.Save(dir + "\\preview.png");
             File.WriteAllBytes(dir + "\\pack.json", Properties.Resources.pack);
         }
 

@@ -1,15 +1,21 @@
 ﻿{
   //Any line that starts with "//" is a comment and can be removed
-  "description": "Testing stuff",
+  "description": "Default resource pack for Zenith's textured plugin.",
   "sameWidthNotes": "false",
 
-  "previewImage": "blackKeyPressed.png",
+  "previewImage": "preview.png",
 
-  "blackKey": "blackKey.png",
-  "blackKeyPressed": "blackKeyPressed.png",
-  "whiteKey": "whiteKey.png",
-  "whiteKeyPressed": "whiteKeyPressed.png",
+  "blackKey": "keyBlack.png",
+  "blackKeyPressed": "keyBlackPressed.png",
+  "whiteKey": "keyWhite.png",
+  "whiteKeyPressed": "keyWhitePressed.png",
+  "bar": "bar.png",
 
+  "blackKeyOversize": 3,
+  "blackKeyPressedOversize": 1,
+
+  "blackKeysWhiteShade": "true",
+  "blackKeyHeight": 40,
   //Note type maximum sizes (aspect ratios)
   //Warning: using more than one note height texture is much slower
   "notes": [
@@ -17,19 +23,13 @@
       //Size is relative to width. Size = note_height / note_width
       "maxSize": 4,
       //alwaysStretch means that it will never tile the texture
-      "alwaysStretch": "false",
+      "alwaysStretch": "true",
       "useEndCaps": "true",
       "middleTexture": "note.png",
-      "topTexture": "blackKey.png",
-      "bottomTexture": "blackKey.png",
+      "topTexture": "noteEdge.png",
+      "bottomTexture": "noteEdge.png",
       "topOversize": 0,
       "bottomOversize": 0
-    },
-    {
-      "maxSize": 2,
-      "alwaysStretch": "true",
-      "useEndCaps": "false",
-      "middleTexture": "whiteKey.png"
     }
   ]
 }
