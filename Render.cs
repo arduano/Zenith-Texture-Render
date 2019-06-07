@@ -491,7 +491,7 @@ void main()
             int kbfirstNote = settings.firstNote;
             int kblastNote = settings.lastNote;
             if (blackKeys[firstNote]) kbfirstNote--;
-            kblastNote++;
+            if (blackKeys[lastNote - 1] || currPack.whiteKeysFullOctave) kblastNote++;
 
             double deltaTimeOnScreen = NoteScreenTime;
             double keyboardHeightFull = currPack.keyboardHeight / (lastNote - firstNote) * 128;

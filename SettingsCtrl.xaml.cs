@@ -51,7 +51,7 @@ namespace TexturedRender
             this.settings = settings;
             InitializeComponent();
             inited = true;
-            paletteList.SetPath("Plugins\\Assets\\Textured\\Palettes", 1f);
+            paletteList.SetPath("Plugins\\Assets\\Palettes", 1f);
             ReloadPacks();
             SetValues();
         }

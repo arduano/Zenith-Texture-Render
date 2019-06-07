@@ -19,6 +19,7 @@ namespace TexturedRender
         public double maxSize;
         public bool useCaps;
         public bool stretch;
+        public double minSize = double.NaN;
 
         public double darkenBlackNotes = 1;
 
