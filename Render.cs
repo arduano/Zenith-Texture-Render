@@ -307,6 +307,16 @@ void main()
                 currPack.whiteKeyTexID, currPack.whiteKeyPressedTexID,
                 currPack.blackKeyTexID, currPack.blackKeyPressedTexID
             });
+
+            if (currPack.whiteKeyLeftTex != null)
+                GL.DeleteTextures(2, new int[] {
+                    currPack.whiteKeyLeftTexID, currPack.whiteKeyPressedLeftTexID
+                });
+            if (currPack.whiteKeyRightTex != null)
+                GL.DeleteTextures(2, new int[] {
+                    currPack.whiteKeyRightTexID, currPack.whiteKeyPressedRightTexID
+                });
+
             if (currPack.useBar) GL.DeleteTexture(currPack.barTexID);
             foreach (var n in currPack.NoteTextures)
             {
@@ -332,6 +342,22 @@ void main()
             loadImage(currPack.whiteKeyPressedTex, currPack.whiteKeyPressedTexID, false, true);
             loadImage(currPack.blackKeyTex, currPack.blackKeyTexID, false, false);
             loadImage(currPack.blackKeyPressedTex, currPack.blackKeyPressedTexID, false, false);
+
+            if (currPack.whiteKeyLeftTex != null)
+            {
+                currPack.whiteKeyLeftTexID = GL.GenTexture();
+                currPack.whiteKeyPressedLeftTexID = GL.GenTexture();
+                loadImage(currPack.whiteKeyLeftTex, currPack.whiteKeyLeftTexID, false, true);
+                loadImage(currPack.whiteKeyPressedLeftTex, currPack.whiteKeyPressedLeftTexID, false, true);
+            }
+            if (currPack.whiteKeyRightTex != null)
+            {
+                currPack.whiteKeyRightTexID = GL.GenTexture();
+                currPack.whiteKeyPressedRightTexID = GL.GenTexture();
+                loadImage(currPack.whiteKeyRightTex, currPack.whiteKeyRightTexID, false, true);
+                loadImage(currPack.whiteKeyPressedRightTex, currPack.whiteKeyPressedRightTexID, false, true);
+            }
+
             if (currPack.useBar) loadImage(currPack.barTex, currPack.barTexID, false, true);
 
             foreach (var n in currPack.NoteTextures)
@@ -403,7 +429,7 @@ void main()
             }
 
             GL.UseProgram(quadShader);
-            for(int i = 0; i < 12; i++)
+            for (int i = 0; i < 12; i++)
             {
                 loc = GL.GetUniformLocation(quadShader, "textureSampler" + (i + 1));
                 GL.Uniform1(loc, i);
@@ -490,8 +516,8 @@ void main()
             int lastNote = settings.lastNote;
             int kbfirstNote = settings.firstNote;
             int kblastNote = settings.lastNote;
-            if (blackKeys[firstNote]) kbfirstNote--;
-            if (blackKeys[lastNote - 1] || currPack.whiteKeysFullOctave) kblastNote++;
+            if (blackKeys[firstNote] || (currPack.whiteKeysFullOctave && currPack.whiteKeyLeftTex == null && firstNote != 0)) kbfirstNote--;
+            if (blackKeys[lastNote - 1] || (currPack.whiteKeysFullOctave && currPack.whiteKeyRightTex == null)) kblastNote++;
 
             double deltaTimeOnScreen = NoteScreenTime;
             double keyboardHeightFull = currPack.keyboardHeight / (lastNote - firstNote) * 128;
@@ -537,8 +563,8 @@ void main()
                         wdth = 0.6f / (knmln - knmfn + 1);
                         int bknum = keynum[i] % 5;
                         double offset = wdth / 2;
-                        if(bknum == 0) offset += offset * 0.3;
-                        if(bknum == 2) offset += offset * 0.5;
+                        if (bknum == 0) offset += offset * 0.3;
+                        if (bknum == 2) offset += offset * 0.5;
                         if (bknum == 1) offset -= offset * 0.3;
                         if (bknum == 4) offset -= offset * 0.5;
 
@@ -655,6 +681,11 @@ void main()
                                     double middley = (y2 + y1) / 2;
                                     y1 = middley;
                                     y2 = middley;
+                                    if (!ntex.squeezeEndCaps)
+                                    {
+                                        yy1 = y1 + topHeight;
+                                        yy2 = y2 - bottomHeight;
+                                    }
                                 }
                                 texSize = (y1 - y2) / wdth / viewAspect;
                             }
@@ -906,6 +937,20 @@ void main()
             GL.BindTexture(TextureTarget.Texture2D, currPack.whiteKeyPressedTexID);
             GL.ActiveTexture(TextureUnit.Texture0);
             GL.BindTexture(TextureTarget.Texture2D, currPack.whiteKeyTexID);
+            if (currPack.whiteKeyLeftTex != null)
+            {
+                GL.ActiveTexture(TextureUnit.Texture3);
+                GL.BindTexture(TextureTarget.Texture2D, currPack.whiteKeyPressedLeftTexID);
+                GL.ActiveTexture(TextureUnit.Texture2);
+                GL.BindTexture(TextureTarget.Texture2D, currPack.whiteKeyLeftTexID);
+            }
+            if (currPack.whiteKeyRightTex != null)
+            {
+                GL.ActiveTexture(TextureUnit.Texture5);
+                GL.BindTexture(TextureTarget.Texture2D, currPack.whiteKeyPressedRightTexID);
+                GL.ActiveTexture(TextureUnit.Texture4);
+                GL.BindTexture(TextureTarget.Texture2D, currPack.whiteKeyRightTexID);
+            }
             for (int k = kbfirstNote; k < kblastNote; k++)
             {
                 if (isBlackNote(k))
@@ -913,7 +958,7 @@ void main()
                 else
                     origColors[k] = Color4.White;
             }
-            
+
             float pressed;
             for (int n = kbfirstNote; n < kblastNote; n++)
             {
@@ -982,6 +1027,11 @@ void main()
                 a2 = colr.A;
                 if (blendfac1 + blendfac2 != 0) pressed = 1;
                 else pressed = 0;
+
+                if (currPack.whiteKeyLeftTex != null && n == kbfirstNote && !blackKeys[n])
+                    pressed += 2;
+                else if (currPack.whiteKeyRightTex != null && n == kblastNote - 1 && !blackKeys[n])
+                    pressed += 4;
 
                 pos = quadBufferPos * 8;
                 quadVertexbuff[pos++] = x1;
@@ -1097,7 +1147,7 @@ void main()
                 double yy1 = y1;
                 if (pressed == 1) yy1 += keyboardHeightFull * currPack.blackKeyPressedOversize;
                 else yy1 += keyboardHeightFull * currPack.blackKeyOversize;
-                if(pressed == 0 && currPack.blackKeyDefaultWhite)
+                if (pressed == 0 && currPack.blackKeyDefaultWhite)
                 {
                     r = g = b = a = 1;
                     r2 = g2 = b2 = a2 = 1;

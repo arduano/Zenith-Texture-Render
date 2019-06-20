@@ -19,7 +19,7 @@ namespace TexturedRender
         public double maxSize;
         public bool useCaps;
         public bool stretch;
-        public double minSize = double.NaN;
+        public bool squeezeEndCaps = true;
 
         public double darkenBlackNotes = 1;
 
@@ -75,8 +75,20 @@ namespace TexturedRender
         public int barTexID;
         public double barHeight = 0.05;
 
+        public Bitmap whiteKeyLeftTex = null;
+        public int whiteKeyLeftTexID;
+        public Bitmap whiteKeyPressedLeftTex = null;
+        public int whiteKeyPressedLeftTexID;
+
+        public Bitmap whiteKeyRightTex = null;
+        public int whiteKeyRightTexID;
+        public Bitmap whiteKeyPressedRightTex = null;
+        public int whiteKeyPressedRightTexID;
+
         public bool whiteKeysFullOctave = false;
         public bool blackKeysFullOctave = false;
+
+
         public NoteTexture[] NoteTextures;
     }
 }

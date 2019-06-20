@@ -159,6 +159,7 @@ namespace TexturedRender
                     }
                     catch { }
 
+                    #region Misc
                     try
                     {
                         pack.keyboardHeight = (double)data.keyboardHeight / 100;
@@ -189,7 +190,9 @@ namespace TexturedRender
                         pack.blackKeyDefaultWhite = data.blackKeysWhiteShade;
                     }
                     catch { }
+                    #endregion
 
+                    #region Shaders
                     string shader = null;
                     try
                     {
@@ -211,6 +214,7 @@ namespace TexturedRender
                     }
                     catch { }
                     if (shader != null) pack.blackKeyShader = strToShader(shader);
+                    #endregion
 
                     #region Get Keys
                     try
@@ -237,6 +241,45 @@ namespace TexturedRender
                     }
                     catch { throw new Exception("Missing property \"whiteKeyPressed\""); }
                     pack.whiteKeyPressedTex = GetBitmap(Path.Combine(p, pname));
+
+                    try
+                    {
+                        pname = data.whiteKeyLeft;
+                        pack.whiteKeyLeftTex = GetBitmap(Path.Combine(p, pname));
+                    }
+                    catch { pack.whiteKeyLeftTex = null; }
+                    try
+                    {
+                        pname = data.whiteKeyLeftPressed;
+                        pack.whiteKeyPressedLeftTex = GetBitmap(Path.Combine(p, pname));
+                    }
+                    catch { pack.whiteKeyPressedLeftTex = null; }
+
+                    try
+                    {
+                        pname = data.whiteKeyRight;
+                        pack.whiteKeyRightTex = GetBitmap(Path.Combine(p, pname));
+                    }
+                    catch { pack.whiteKeyRightTex = null; }
+                    try
+                    {
+                        pname = data.whiteKeyRightPressed;
+                        pack.whiteKeyPressedRightTex = GetBitmap(Path.Combine(p, pname));
+                    }
+                    catch { pack.whiteKeyPressedRightTex = null; }
+
+                    if ((pack.whiteKeyLeftTex == null) ^ (pack.whiteKeyPressedLeftTex == null))
+                        if (pack.whiteKeyLeftTex == null)
+                            throw new Exception("whiteKeyLeft is incliuded while whiteKeyLeftPressed is missing. Include or remove both.");
+                        else
+                            throw new Exception("whiteKeyLeftPressed is incliuded while whiteKeyLeft is missing. Include or remove both.");
+
+                    if ((pack.whiteKeyRightTex == null) ^ (pack.whiteKeyPressedRightTex == null))
+                        if (pack.whiteKeyRightTex == null)
+                            throw new Exception("whiteKeyRight is incliuded while whiteKeyRightPressed is missing. Include or remove both.");
+                        else
+                            throw new Exception("whiteKeyRightPressed is incliuded while whiteKeyRight is missing. Include or remove both.");
+
                     #endregion
 
                     #region Oversizes
@@ -262,6 +305,7 @@ namespace TexturedRender
                     catch { }
                     #endregion
 
+                    #region Bar
                     try
                     {
                         pname = data.bar;
@@ -278,7 +322,9 @@ namespace TexturedRender
                         }
                         catch { }
                     }
+                    #endregion
 
+                    #region Notes
                     JArray noteSizes;
                     try
                     {
@@ -321,6 +367,11 @@ namespace TexturedRender
                             tex.darkenBlackNotes = (double)s.darkenBlackNotes;
                         }
                         catch { }
+                        try
+                        {
+                            tex.squeezeEndCaps  = (bool)s.squeezeEndCaps;
+                        }
+                        catch { }
 
                         if (tex.useCaps)
                         {
@@ -361,6 +412,7 @@ namespace TexturedRender
                     });
                     noteTex.Last().maxSize = double.PositiveInfinity;
                     pack.NoteTextures = noteTex.ToArray();
+                    #endregion
                 }
                 catch (Exception e)
                 {
