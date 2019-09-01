@@ -263,7 +263,9 @@ void main()
 
         public int NoteCollectorOffset => 0;
 
-        public double LastMidiTimePerTick { get; set; }
+        public NoteColor[][] NoteColors { get; set; }
+
+        public double Tempo { get; set; }
         public MidiInfo CurrentMidi { get; set; }
 
         public double NoteScreenTime => settings.deltaTimeOnScreen;
@@ -403,6 +405,7 @@ void main()
             this.settings = new Settings();
             this.renderSettings = settings;
             SettingsControl = new SettingsCtrl(this.settings);
+            ((SettingsCtrl)SettingsControl).PaletteChanged += () => { ReloadTrackColors(); };
             PreviewImage = BitmapToImageSource(Properties.Resources.pluginPreview);
 
             for (int i = 0; i < blackKeys.Length; i++) blackKeys[i] = isBlackNote(i);
@@ -587,6 +590,19 @@ void main()
             #region Notes
             quadBufferPos = 0;
             double notePosFactor = 1 / deltaTimeOnScreen * (1 - keyboardHeightFull);
+
+            double maxTopCapSize = 0;
+            double maxBottomCapSize = 0;
+            foreach (var tex in currPack.NoteTextures)
+            {
+                var topSize = tex.noteTopAspect * viewAspect * wdtharray[5] / notePosFactor;
+                if (tex.squeezeEndCaps) topSize *= tex.noteTopOversize;
+                var bottomSize = tex.noteBottomAspect * viewAspect * wdtharray[5] / notePosFactor;
+                if (tex.squeezeEndCaps) bottomSize *= tex.noteBottomOversize;
+                if (maxTopCapSize < topSize) maxTopCapSize = topSize;
+                if (maxBottomCapSize < bottomSize) maxBottomCapSize = bottomSize;
+            }
+
             double renderCutoff = midiTime + deltaTimeOnScreen;
 
             var currNoteTex = currPack.NoteTextures[0];
@@ -613,9 +629,9 @@ void main()
                 if (!blackabove && i == 1) break;
                 foreach (Note n in notes)
                 {
-                    if (n.end >= midiTime || !n.hasEnded)
+                    if (n.end >= midiTime - maxTopCapSize || !n.hasEnded)
                     {
-                        if (n.start < renderCutoff)
+                        if (n.start < renderCutoff + maxBottomCapSize)
                         {
                             nc++;
                             int k = n.note;
@@ -657,12 +673,39 @@ void main()
                             {
                                 if (t.maxSize > texSize)
                                 {
+                                    if (t.keyType != KeyType.Both)
+                                    {
+                                        if (blackKeys[k] ^ (t.keyType == KeyType.Black))
+                                        {
+                                            tex++;
+                                            continue;
+                                        }
+                                    }
                                     ntex = t;
                                     break;
                                 }
                                 tex++;
                             }
                             tex *= 3;
+
+                            if (ntex.highlightHitNotes > 0 && n.start <= midiTime)
+                            {
+                                var col = ntex.highlightHitNotesColor;
+                                float blendfac = (float)ntex.highlightHitNotes;
+                                float iblendfac = 1 - blendfac;
+                                coll = new Color4(
+                                    coll.R * iblendfac + col.R / 255.0f * blendfac,
+                                    coll.G * iblendfac + col.G / 255.0f * blendfac,
+                                    coll.B * iblendfac + col.B / 255.0f * blendfac,
+                                    coll.A
+                                );
+                                colr = new Color4(
+                                    colr.R * iblendfac + col.R / 255.0f * blendfac,
+                                    colr.G * iblendfac + col.G / 255.0f * blendfac,
+                                    colr.B * iblendfac + col.B / 255.0f * blendfac,
+                                    colr.A
+                                );
+                            }
 
                             double topHeight;
                             double bottomHeight;
@@ -1278,16 +1321,19 @@ void main()
             return n == 1 || n == 3 || n == 6 || n == 8 || n == 10;
         }
 
-        public void SetTrackColors(NoteColor[][] trakcs)
+        public void ReloadTrackColors()
         {
-            var cols = ((SettingsCtrl)SettingsControl).paletteList.GetColors(trakcs.Length);
+            var cols = ((SettingsCtrl)SettingsControl).paletteList.GetColors(NoteColors.Length);
 
-            for (int i = 0; i < trakcs.Length; i++)
+            for (int i = 0; i < NoteColors.Length; i++)
             {
-                for (int j = 0; j < trakcs[i].Length; j++)
+                for (int j = 0; j < NoteColors[i].Length; j++)
                 {
-                    trakcs[i][j].left = cols[i * 32 + j * 2];
-                    trakcs[i][j].right = cols[i * 32 + j * 2 + 1];
+                    if (NoteColors[i][j].isDefault)
+                    {
+                        NoteColors[i][j].left = cols[i * 32 + j * 2];
+                        NoteColors[i][j].right = cols[i * 32 + j * 2 + 1];
+                    }
                 }
             }
         }

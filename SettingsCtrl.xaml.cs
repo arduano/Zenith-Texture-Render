@@ -4,6 +4,8 @@ using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Runtime.Remoting;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -29,6 +31,17 @@ namespace TexturedRender
     {
         List<Pack> resourcePacks = new List<Pack>();
         Settings settings;
+
+        enum PackType
+        {
+            Folder, Zip, Zrp
+        }
+
+        public event Action PaletteChanged
+        {
+            add { paletteList.PaletteChanged += value; }
+            remove { paletteList.PaletteChanged -= value; }
+        }
 
         BitmapImage BitmapToImageSource(Bitmap bitmap)
         {
@@ -89,26 +102,33 @@ namespace TexturedRender
             string dir = "Plugins\\Assets\\Textured\\Resources";
             foreach (var r in resourcePacks)
             {
-                r.whiteKeyTex.Dispose();
-                r.blackKeyTex.Dispose();
-                r.whiteKeyPressedTex.Dispose();
-                r.blackKeyPressedTex.Dispose();
-                r.preview.Dispose();
-                foreach (var n in r.NoteTextures)
-                {
-                    n.noteMiddleTex.Dispose();
-                    if (n.noteBottomTex != null)
-                        n.noteBottomTex.Dispose();
-                    if (n.noteTopTex != null)
-                        n.noteTopTex.Dispose();
-                }
+                if (r.whiteKeyTex != null)
+                    r.whiteKeyTex.Dispose();
+                if (r.blackKeyTex != null)
+                    r.blackKeyTex.Dispose();
+                if (r.whiteKeyPressedTex != null)
+                    r.whiteKeyPressedTex.Dispose();
+                if (r.blackKeyPressedTex != null)
+                    r.blackKeyPressedTex.Dispose();
+                if (r.preview != null)
+                    r.preview.Dispose();
+                if (r.NoteTextures != null)
+                    foreach (var n in r.NoteTextures)
+                    {
+                        if (n.noteMiddleTex != null)
+                            n.noteMiddleTex.Dispose();
+                        if (n.noteBottomTex != null)
+                            n.noteBottomTex.Dispose();
+                        if (n.noteTopTex != null)
+                            n.noteTopTex.Dispose();
+                    }
             }
             resourcePacks.Clear();
             WriteDefaultPack();
             pluginList.Items.Clear();
             foreach (var p in Directory.GetDirectories(dir))
             {
-                var pack = LoadPack(p, false);
+                var pack = LoadPack(p, PackType.Folder);
                 resourcePacks.Add(pack);
                 pluginList.Items.Add(new ListBoxItem()
                 {
@@ -117,7 +137,17 @@ namespace TexturedRender
             }
             foreach (var p in Directory.GetFiles(dir, "*.zip"))
             {
-                var pack = LoadPack(p, true);
+                var pack = LoadPack(p, PackType.Zip);
+                resourcePacks.Add(pack);
+                pluginList.Items.Add(new ListBoxItem()
+                {
+                    Content = pack.name,
+                    Foreground = Brushes.Green
+                });
+            }
+            foreach (var p in Directory.GetFiles(dir, "*.zrp"))
+            {
+                var pack = LoadPack(p, PackType.Zrp);
                 resourcePacks.Add(pack);
                 pluginList.Items.Add(new ListBoxItem()
                 {
@@ -143,13 +173,14 @@ namespace TexturedRender
             }
         }
 
-        Pack LoadPack(string p, bool zip)
+        Pack LoadPack(string p, PackType type)
         {
             var pack = new Pack() { name = p.Split('\\').Last() };
 
             string pbase = "";
 
             ZipArchive archive = null;
+            MemoryStream zrpstream = null;
 
             TextureShaderType strToShader(string s)
             {
@@ -159,9 +190,17 @@ namespace TexturedRender
                 throw new Exception("Unknown shader type \"" + s + "\"");
             }
 
+            KeyType strToKeyType(string s)
+            {
+                if (s == "black") return KeyType.Black;
+                if (s == "white") return KeyType.White;
+                if (s == "both") return KeyType.Both;
+                throw new Exception("Unknown key type \"" + s + "\"");
+            }
+
             Bitmap GetBitmap(string path)
             {
-                if (!zip)
+                if (type == PackType.Folder)
                 {
                     path = Path.Combine(p, pbase, path);
                     FileStream s;
@@ -201,7 +240,7 @@ namespace TexturedRender
             try
             {
                 string json = "";
-                if (!zip)
+                if (type == PackType.Folder)
                 {
                     var files = Directory.GetFiles(p, "*pack.json", SearchOption.AllDirectories)
                         .Where(s => s.EndsWith("\\pack.json"))
@@ -219,9 +258,34 @@ namespace TexturedRender
                 }
                 else
                 {
-                    archive = ZipFile.OpenRead(p);
+                    if (type == PackType.Zrp)
+                    {
+                        var encoded = File.OpenRead(p);
+                        var key = new byte[16];
+                        var iv = new byte[16];
+                        encoded.Read(key, 0, 16);
+                        encoded.Read(iv, 0, 16);
+
+                        zrpstream = new MemoryStream();
+
+                        using (AesManaged aes = new AesManaged())
+                        {
+                            ICryptoTransform decryptor = aes.CreateDecryptor(key, iv);
+                            using (CryptoStream cs = new CryptoStream(encoded, decryptor, CryptoStreamMode.Read))
+                            {
+                                cs.CopyTo(zrpstream);
+                            }
+                            zrpstream.Position = 0;
+                            archive = new ZipArchive(zrpstream);
+                        }
+                    }
+                    else
+                    {
+                        archive = ZipFile.OpenRead(p);
+                    }
                     var files = archive.Entries.Where(e => e.Name == "pack.json").ToArray();
                     Array.Sort(files.Select(s => s.FullName.Length).ToArray(), files);
+                    if (files.Length == 0) throw new Exception("Could not find pack.json file");
                     var jsonfile = files[0];
                     pbase = jsonfile.FullName.Substring(0, jsonfile.FullName.Length - "pack.json".Length);
                     using (var jfile = new StreamReader(jsonfile.Open()))
@@ -290,7 +354,7 @@ namespace TexturedRender
                 }
                 catch { }
                 if (shader != null) pack.noteShader = strToShader(shader);
-                shader = "";
+                shader = null;
                 try
                 {
                     shader = data.whiteKeyShader;
@@ -425,6 +489,7 @@ namespace TexturedRender
                 if (noteSizes.Count > 4) throw new Exception("Only up to 4 note textures are supported");
 
                 List<NoteTexture> noteTex = new List<NoteTexture>();
+                bool hasBothKeyType = false;
                 foreach (dynamic s in noteSizes)
                 {
                     NoteTexture tex = new NoteTexture();
@@ -457,11 +522,49 @@ namespace TexturedRender
                         tex.darkenBlackNotes = (double)s.darkenBlackNotes;
                     }
                     catch { }
+
+                    try
+                    {
+                        tex.highlightHitNotes = (double)s.highlightHitNotes;
+                    }
+                    catch { }
+                    if (tex.highlightHitNotes > 1 || tex.highlightHitNotes < 0) throw new Exception("highlightHitNotes must be between 0 and 1");
+
+                    JArray array = null;
+                    bool notArray = false;
+                    try
+                    {
+                        var _array = s.highlightHitNotesColor;
+                        if (_array != null)
+                        {
+                            notArray = _array.GetType() != typeof(JArray);
+                            if (!notArray) array = _array;
+                        }
+                    }
+                    catch { if (notArray) throw new Exception("highlightHitNotes must be an array of 3 numbers (RGB or RGBA, e.g. [255, 255, 255, 100])"); }
+                    if (array != null)
+                    {
+                        if (!(array.Count == 3)) throw new Exception("highlightHitNotes must be an array of 3-4 numbers (RGB or RGBA, e.g. [255, 255, 255, 100])");
+                        else
+                        {
+                            tex.highlightHitNotesColor = System.Drawing.Color.FromArgb(255, (int)array[0], (int)array[1], (int)array[2]);
+                        }
+                    }
+
                     try
                     {
                         tex.squeezeEndCaps = (bool)s.squeezeEndCaps;
                     }
                     catch { }
+
+                    string keyType = null;
+                    try
+                    {
+                        keyType = (string)s.keyType;
+                    }
+                    catch { }
+                    if (keyType != null) tex.keyType = strToKeyType(keyType);
+                    if (tex.keyType == KeyType.Both) hasBothKeyType = true;
 
                     if (tex.useCaps)
                     {
@@ -494,13 +597,26 @@ namespace TexturedRender
                     noteTex.Add(tex);
                 }
 
+                if (!hasBothKeyType) throw new Exception("At least one note texture required with key type of \"both\"");
+
                 noteTex.Sort((c1, c2) =>
                 {
                     if (c1.maxSize < c2.maxSize) return -1;
                     if (c1.maxSize > c2.maxSize) return 1;
+                    if (c2.keyType == KeyType.Both && c1.keyType != KeyType.Both) return -1;
+                    if (c1.keyType == KeyType.Both && c2.keyType != KeyType.Both) return 1;
                     return 0;
                 });
-                noteTex.Last().maxSize = double.PositiveInfinity;
+                bool firstBoth = false;
+                for (int i = noteTex.Count - 1; i >= 0; i--)
+                {
+                    if (noteTex[i].keyType == KeyType.Both)
+                    {
+                        if (firstBoth) break;
+                        else firstBoth = true;
+                    }
+                    noteTex[i].maxSize = double.PositiveInfinity;
+                }
                 pack.NoteTextures = noteTex.ToArray();
                 #endregion
             }
@@ -513,6 +629,8 @@ namespace TexturedRender
             {
                 if (archive != null)
                     archive.Dispose();
+                if (zrpstream != null)
+                    zrpstream.Dispose();
             }
             return pack;
         }

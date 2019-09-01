@@ -14,6 +14,13 @@ namespace TexturedRender
         Hybrid
     }
 
+    public enum KeyType
+    {
+        White,
+        Black,
+        Both
+    }
+
     public class NoteTexture
     {
         public double maxSize;
@@ -22,6 +29,8 @@ namespace TexturedRender
         public bool squeezeEndCaps = true;
 
         public double darkenBlackNotes = 1;
+        public double highlightHitNotes = 0;
+        public Color highlightHitNotesColor = Color.FromArgb(50, 255, 255, 255);
 
         public double noteMiddleAspect;
         public Bitmap noteMiddleTex;
@@ -34,6 +43,8 @@ namespace TexturedRender
         public double noteBottomAspect;
         public Bitmap noteBottomTex;
         public int noteBottomTexID;
+
+        public KeyType keyType = KeyType.Both;
     }
 
     public class Pack
