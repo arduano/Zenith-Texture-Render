@@ -21,6 +21,21 @@ namespace TexturedRender
         Both
     }
 
+    public enum PackType
+    {
+        Folder, Zip, Zrp, Rar, SevenZip, Tar
+    }
+
+    public class KeyboardOverlay
+    {
+        public int firstKey;
+        public int lastKey;
+        public double alpha = 1;
+        public Bitmap tex;
+        public int texID;
+        public double texAspect;
+    }
+
     public class NoteTexture
     {
         public double maxSize;
@@ -30,7 +45,7 @@ namespace TexturedRender
 
         public double darkenBlackNotes = 1;
         public double highlightHitNotes = 0;
-        public Color highlightHitNotesColor = Color.FromArgb(50, 255, 255, 255);
+        public Color highlightHitNotesColor = Color.FromArgb(255, 255, 255, 255);
 
         public double noteMiddleAspect;
         public Bitmap noteMiddleTex;
@@ -49,7 +64,12 @@ namespace TexturedRender
 
     public class Pack
     {
-        public string pathName;
+        public string filepath;
+        public PackType filetype;
+
+        public Dictionary<string, string> switchValues = new Dictionary<string, string>();
+        public Dictionary<string, string[]> switchChoices = new Dictionary<string, string[]>();
+
         public string name;
         public bool error = false;
         public Bitmap preview = null;
@@ -99,7 +119,9 @@ namespace TexturedRender
         public bool whiteKeysFullOctave = false;
         public bool blackKeysFullOctave = false;
 
-
         public NoteTexture[] NoteTextures;
+        public KeyboardOverlay[] OverlayTextures;
+
+        public bool disposed = false;
     }
 }

@@ -261,14 +261,14 @@ void main()
 
         public bool ManualNoteDelete => false;
 
-        public int NoteCollectorOffset => 0;
+        public double NoteCollectorOffset => -maxBottomCapSize;
 
         public NoteColor[][] NoteColors { get; set; }
 
         public double Tempo { get; set; }
         public MidiInfo CurrentMidi { get; set; }
 
-        public double NoteScreenTime => settings.deltaTimeOnScreen;
+        public double NoteScreenTime => settings.deltaTimeOnScreen + maxTopCapSize;
 
         public long LastNoteCount { get; set; }
 
@@ -299,7 +299,7 @@ void main()
         bool[] blackKeys = new bool[257];
         int[] keynum = new int[257];
 
-        public Pack currPack = null;
+        Pack currPack = null;
         public long lastPackChangeTime = 0;
 
         public void UnloadPack()
@@ -329,49 +329,62 @@ void main()
                     GL.DeleteTexture(n.noteTopTexID);
                 }
             }
+            foreach (var o in currPack.OverlayTextures)
+            {
+                GL.DeleteTexture(o.texID);
+            }
         }
 
         public void LoadPack()
         {
             if (currPack == null) return;
-            currPack.whiteKeyTexID = GL.GenTexture();
-            currPack.whiteKeyPressedTexID = GL.GenTexture();
-            currPack.blackKeyTexID = GL.GenTexture();
-            currPack.blackKeyPressedTexID = GL.GenTexture();
-            if (currPack.useBar) currPack.barTexID = GL.GenTexture();
-
-            loadImage(currPack.whiteKeyTex, currPack.whiteKeyTexID, false, true);
-            loadImage(currPack.whiteKeyPressedTex, currPack.whiteKeyPressedTexID, false, true);
-            loadImage(currPack.blackKeyTex, currPack.blackKeyTexID, false, false);
-            loadImage(currPack.blackKeyPressedTex, currPack.blackKeyPressedTexID, false, false);
-
-            if (currPack.whiteKeyLeftTex != null)
+            if (currPack.disposed) return;
+            lock (currPack)
             {
-                currPack.whiteKeyLeftTexID = GL.GenTexture();
-                currPack.whiteKeyPressedLeftTexID = GL.GenTexture();
-                loadImage(currPack.whiteKeyLeftTex, currPack.whiteKeyLeftTexID, false, true);
-                loadImage(currPack.whiteKeyPressedLeftTex, currPack.whiteKeyPressedLeftTexID, false, true);
-            }
-            if (currPack.whiteKeyRightTex != null)
-            {
-                currPack.whiteKeyRightTexID = GL.GenTexture();
-                currPack.whiteKeyPressedRightTexID = GL.GenTexture();
-                loadImage(currPack.whiteKeyRightTex, currPack.whiteKeyRightTexID, false, true);
-                loadImage(currPack.whiteKeyPressedRightTex, currPack.whiteKeyPressedRightTexID, false, true);
-            }
+                currPack.whiteKeyTexID = GL.GenTexture();
+                currPack.whiteKeyPressedTexID = GL.GenTexture();
+                currPack.blackKeyTexID = GL.GenTexture();
+                currPack.blackKeyPressedTexID = GL.GenTexture();
+                if (currPack.useBar) currPack.barTexID = GL.GenTexture();
 
-            if (currPack.useBar) loadImage(currPack.barTex, currPack.barTexID, false, true);
+                loadImage(currPack.whiteKeyTex, currPack.whiteKeyTexID, false, true);
+                loadImage(currPack.whiteKeyPressedTex, currPack.whiteKeyPressedTexID, false, true);
+                loadImage(currPack.blackKeyTex, currPack.blackKeyTexID, false, false);
+                loadImage(currPack.blackKeyPressedTex, currPack.blackKeyPressedTexID, false, false);
 
-            foreach (var n in currPack.NoteTextures)
-            {
-                n.noteMiddleTexID = GL.GenTexture();
-                loadImage(n.noteMiddleTex, n.noteMiddleTexID, true, true);
-                if (n.useCaps)
+                if (currPack.whiteKeyLeftTex != null)
                 {
-                    n.noteTopTexID = GL.GenTexture();
-                    loadImage(n.noteTopTex, n.noteTopTexID, false, true);
-                    n.noteBottomTexID = GL.GenTexture();
-                    loadImage(n.noteBottomTex, n.noteBottomTexID, false, true);
+                    currPack.whiteKeyLeftTexID = GL.GenTexture();
+                    currPack.whiteKeyPressedLeftTexID = GL.GenTexture();
+                    loadImage(currPack.whiteKeyLeftTex, currPack.whiteKeyLeftTexID, false, true);
+                    loadImage(currPack.whiteKeyPressedLeftTex, currPack.whiteKeyPressedLeftTexID, false, true);
+                }
+                if (currPack.whiteKeyRightTex != null)
+                {
+                    currPack.whiteKeyRightTexID = GL.GenTexture();
+                    currPack.whiteKeyPressedRightTexID = GL.GenTexture();
+                    loadImage(currPack.whiteKeyRightTex, currPack.whiteKeyRightTexID, false, true);
+                    loadImage(currPack.whiteKeyPressedRightTex, currPack.whiteKeyPressedRightTexID, false, true);
+                }
+
+                if (currPack.useBar) loadImage(currPack.barTex, currPack.barTexID, false, true);
+
+                foreach (var n in currPack.NoteTextures)
+                {
+                    n.noteMiddleTexID = GL.GenTexture();
+                    loadImage(n.noteMiddleTex, n.noteMiddleTexID, true, true);
+                    if (n.useCaps)
+                    {
+                        n.noteTopTexID = GL.GenTexture();
+                        loadImage(n.noteTopTex, n.noteTopTexID, false, true);
+                        n.noteBottomTexID = GL.GenTexture();
+                        loadImage(n.noteBottomTex, n.noteBottomTexID, false, true);
+                    }
+                }
+                foreach (var o in currPack.OverlayTextures)
+                {
+                    o.texID = GL.GenTexture();
+                    loadImage(o.tex, o.texID, false, false);
                 }
             }
         }
@@ -485,6 +498,8 @@ void main()
         Color4[] keyColors = new Color4[514];
         double[] x1array = new double[257];
         double[] wdtharray = new double[257];
+        double maxTopCapSize = 0;
+        double maxBottomCapSize = 0;
 
         void SwitchShader(TextureShaderType shader)
         {
@@ -522,7 +537,7 @@ void main()
             if (blackKeys[firstNote] || (currPack.whiteKeysFullOctave && currPack.whiteKeyLeftTex == null && firstNote != 0)) kbfirstNote--;
             if (blackKeys[lastNote - 1] || (currPack.whiteKeysFullOctave && currPack.whiteKeyRightTex == null)) kblastNote++;
 
-            double deltaTimeOnScreen = NoteScreenTime;
+            double deltaTimeOnScreen = settings.deltaTimeOnScreen;
             double keyboardHeightFull = currPack.keyboardHeight / (lastNote - firstNote) * 128;
             double keyboardHeight = keyboardHeightFull;
             double barHeight = keyboardHeightFull * currPack.barHeight;
@@ -571,14 +586,6 @@ void main()
                         if (bknum == 1) offset -= offset * 0.3;
                         if (bknum == 4) offset -= offset * 0.5;
 
-                        //if (bknum == 0 || bknum == 2)
-                        //{
-                        //    offset *= 1.3;
-                        //}
-                        //else if (bknum == 1 || bknum == 4)
-                        //{
-                        //    offset *= 0.7;
-                        //}
                         x1array[i] = (float)(keynum[_i] - knmfn) / (knmln - knmfn + 1) - offset;
                         wdtharray[i] = wdth;
                     }
@@ -591,8 +598,8 @@ void main()
             quadBufferPos = 0;
             double notePosFactor = 1 / deltaTimeOnScreen * (1 - keyboardHeightFull);
 
-            double maxTopCapSize = 0;
-            double maxBottomCapSize = 0;
+            maxTopCapSize = 0;
+            maxBottomCapSize = 0;
             foreach (var tex in currPack.NoteTextures)
             {
                 var topSize = tex.noteTopAspect * viewAspect * wdtharray[5] / notePosFactor;
@@ -629,7 +636,7 @@ void main()
                 if (!blackabove && i == 1) break;
                 foreach (Note n in notes)
                 {
-                    if (n.end >= midiTime - maxTopCapSize || !n.hasEnded)
+                    if (n.end >= midiTime || !n.hasEnded)
                     {
                         if (n.start < renderCutoff + maxBottomCapSize)
                         {
@@ -751,7 +758,7 @@ void main()
                             quadVertexbuff[pos++] = y2;
 
                             pos = quadBufferPos * 16;
-                            if (black)
+                            if (blackKeys[n.note])
                             {
                                 float multiply = (float)currNoteTex.darkenBlackNotes;
                                 r = coll.R * multiply;
@@ -912,7 +919,8 @@ void main()
                         }
                         else break;
                     }
-
+                    else
+                    { }
                 }
             }
             FlushQuadBuffer(false);
@@ -1264,6 +1272,62 @@ void main()
             FlushQuadBuffer(false);
             #endregion
 
+            #region Overlays
+            foreach (var o in currPack.OverlayTextures)
+            {
+                GL.UseProgram(quadShader);
+                GL.ActiveTexture(TextureUnit.Texture0);
+                GL.BindTexture(TextureTarget.Texture2D, o.texID);
+                pos = quadBufferPos * 8;
+                double start = x1array[o.firstKey];
+                double end = x1array[o.lastKey] + wdtharray[o.lastKey];
+                quadVertexbuff[pos++] = start;
+                quadVertexbuff[pos++] = Math.Abs(start - end) * o.texAspect / viewAspect;
+                quadVertexbuff[pos++] = end;
+                quadVertexbuff[pos++] = Math.Abs(start - end) * o.texAspect / viewAspect;
+                quadVertexbuff[pos++] = end;
+                quadVertexbuff[pos++] = 0;
+                quadVertexbuff[pos++] = start;
+                quadVertexbuff[pos++] = 0;
+
+                pos = quadBufferPos * 16;
+                quadColorbuff[pos++] = 1;
+                quadColorbuff[pos++] = 1;
+                quadColorbuff[pos++] = 1;
+                quadColorbuff[pos++] = (float)o.alpha;
+                quadColorbuff[pos++] = 1;
+                quadColorbuff[pos++] = 1;
+                quadColorbuff[pos++] = 1;
+                quadColorbuff[pos++] = (float)o.alpha;
+                quadColorbuff[pos++] = 1;
+                quadColorbuff[pos++] = 1;
+                quadColorbuff[pos++] = 1;
+                quadColorbuff[pos++] = (float)o.alpha;
+                quadColorbuff[pos++] = 1;
+                quadColorbuff[pos++] = 1;
+                quadColorbuff[pos++] = 1;
+                quadColorbuff[pos++] = (float)o.alpha;
+
+                pos = quadBufferPos * 8;
+                quadUVbuff[pos++] = 0;
+                quadUVbuff[pos++] = 0;
+                quadUVbuff[pos++] = 1;
+                quadUVbuff[pos++] = 0;
+                quadUVbuff[pos++] = 1;
+                quadUVbuff[pos++] = 1;
+                quadUVbuff[pos++] = 0;
+                quadUVbuff[pos++] = 1;
+
+                pos = quadBufferPos * 4;
+                quadTexIDbuff[pos++] = 0;
+                quadTexIDbuff[pos++] = 0;
+                quadTexIDbuff[pos++] = 0;
+                quadTexIDbuff[pos++] = 0;
+                quadBufferPos++;
+                FlushQuadBuffer(false);
+            }
+            #endregion
+
             GL.ActiveTexture(TextureUnit.Texture0);
             GL.Disable(EnableCap.Blend);
             GL.DisableClientState(ArrayCap.VertexArray);
@@ -1323,6 +1387,7 @@ void main()
 
         public void ReloadTrackColors()
         {
+            if (NoteColors == null) return;
             var cols = ((SettingsCtrl)SettingsControl).paletteList.GetColors(NoteColors.Length);
 
             for (int i = 0; i < NoteColors.Length; i++)

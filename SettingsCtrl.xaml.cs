@@ -17,8 +17,14 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Microsoft.CSharp.RuntimeBinder;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SharpCompress;
+using SharpCompress.Archives;
+using SharpCompress.Archives.Rar;
+using SharpCompress.Archives.SevenZip;
+using SharpCompress.Archives.Tar;
 using Brushes = System.Windows.Media.Brushes;
 using Path = System.IO.Path;
 
@@ -27,15 +33,17 @@ namespace TexturedRender
     /// <summary>
     /// Interaction logic for SettingsCtrl.xaml
     /// </summary>
+
+    class PackLocation
+    {
+        public string filename;
+        public PackType type;
+    }
+
     public partial class SettingsCtrl : UserControl
     {
-        List<Pack> resourcePacks = new List<Pack>();
+        List<PackLocation> resourcePacks = new List<PackLocation>();
         Settings settings;
-
-        enum PackType
-        {
-            Folder, Zip, Zrp
-        }
 
         public event Action PaletteChanged
         {
@@ -100,7 +108,88 @@ namespace TexturedRender
             }
 
             string dir = "Plugins\\Assets\\Textured\\Resources";
-            foreach (var r in resourcePacks)
+
+            resourcePacks.Clear();
+            WriteDefaultPack();
+            pluginList.Items.Clear();
+            foreach (var p in Directory.GetDirectories(dir))
+            {
+                resourcePacks.Add(new PackLocation() { filename = p, type = PackType.Folder });
+            }
+            foreach (var p in Directory.GetFiles(dir, "*.zip"))
+            {
+                resourcePacks.Add(new PackLocation() { filename = p, type = PackType.Zip });
+            }
+            foreach (var p in Directory.GetFiles(dir, "*.zrp"))
+            {
+                resourcePacks.Add(new PackLocation() { filename = p, type = PackType.Zrp });
+            }
+            foreach (var p in Directory.GetFiles(dir, "*.rar"))
+            {
+                resourcePacks.Add(new PackLocation() { filename = p, type = PackType.Rar });
+            }
+            foreach (var p in Directory.GetFiles(dir, "*.7z"))
+            {
+                resourcePacks.Add(new PackLocation() { filename = p, type = PackType.SevenZip });
+            }
+            foreach (var p in Directory.GetFiles(dir, "*.tar"))
+            {
+                resourcePacks.Add(new PackLocation() { filename = p, type = PackType.Tar });
+            }
+            foreach (var p in Directory.GetFiles(dir, "*.tar.bz"))
+            {
+                resourcePacks.Add(new PackLocation() { filename = p, type = PackType.Tar });
+            }
+            foreach (var p in Directory.GetFiles(dir, "*.tar.gz"))
+            {
+                resourcePacks.Add(new PackLocation() { filename = p, type = PackType.Tar });
+            }
+            foreach (var p in Directory.GetFiles(dir, "*.tar.xz"))
+            {
+                resourcePacks.Add(new PackLocation() { filename = p, type = PackType.Tar });
+            }
+
+            resourcePacks.Sort((a, b) =>
+            {
+                return a.filename.CompareTo(b.filename);
+            });
+
+            foreach (var p in resourcePacks)
+            {
+                if (p.type == PackType.Folder)
+                    pluginList.Items.Add(new ListBoxItem()
+                    {
+                        Content = p.filename.Split('\\').Last(),
+                        Foreground = Brushes.Black
+                    });
+                else
+                    pluginList.Items.Add(new ListBoxItem()
+                    {
+                        Content = p.filename.Split('\\').Last(),
+                        Foreground = Brushes.Green
+                    });
+            }
+
+            if ((string)((ListBoxItem)pluginList.Items[lastSelected]).Content == lastSelectedName)
+            {
+                pluginList.SelectedIndex = lastSelected;
+            }
+            else
+            {
+                foreach (ListBoxItem p in pluginList.Items)
+                {
+                    if ((string)p.Content == lastSelectedName)
+                    {
+                        pluginList.SelectedItem = p;
+                        break;
+                    }
+                }
+            }
+        }
+
+        void UnloadPack(Pack r)
+        {
+            lock (r)
             {
                 if (r.whiteKeyTex != null)
                     r.whiteKeyTex.Dispose();
@@ -122,64 +211,71 @@ namespace TexturedRender
                         if (n.noteTopTex != null)
                             n.noteTopTex.Dispose();
                     }
-            }
-            resourcePacks.Clear();
-            WriteDefaultPack();
-            pluginList.Items.Clear();
-            foreach (var p in Directory.GetDirectories(dir))
-            {
-                var pack = LoadPack(p, PackType.Folder);
-                resourcePacks.Add(pack);
-                pluginList.Items.Add(new ListBoxItem()
-                {
-                    Content = pack.name
-                });
-            }
-            foreach (var p in Directory.GetFiles(dir, "*.zip"))
-            {
-                var pack = LoadPack(p, PackType.Zip);
-                resourcePacks.Add(pack);
-                pluginList.Items.Add(new ListBoxItem()
-                {
-                    Content = pack.name,
-                    Foreground = Brushes.Green
-                });
-            }
-            foreach (var p in Directory.GetFiles(dir, "*.zrp"))
-            {
-                var pack = LoadPack(p, PackType.Zrp);
-                resourcePacks.Add(pack);
-                pluginList.Items.Add(new ListBoxItem()
-                {
-                    Content = pack.name,
-                    Foreground = Brushes.Green
-                });
-            }
-
-            if ((string)((ListBoxItem)pluginList.Items[lastSelected]).Content == lastSelectedName)
-            {
-                pluginList.SelectedIndex = lastSelected;
-            }
-            else
-            {
-                foreach (ListBoxItem p in pluginList.Items)
-                {
-                    if ((string)p.Content == lastSelectedName)
+                if (r.OverlayTextures != null)
+                    foreach (var o in r.OverlayTextures)
                     {
-                        pluginList.SelectedItem = p;
-                        break;
+                        if (o.tex != null)
+                            o.tex.Dispose();
                     }
-                }
+                r.disposed = true;
             }
         }
 
-        Pack LoadPack(string p, PackType type)
+        T parseType<T>(Pack pack, dynamic o)
+        {
+            if (o == null) throw new RuntimeBinderException();
+            string switchName = null;
+            try
+            {
+                switchName = (string)((JObject)o).GetValue("_switch");
+                if (switchName == null) throw new RuntimeBinderException();
+            }
+            catch
+            {
+                try
+                {
+                    return (T)o;
+                }
+                catch
+                {
+                    throw new Exception("value " + o.ToString() + " can't be converted to type " + typeof(T).ToString());
+                }
+            }
+
+            if (!pack.switchValues.ContainsKey(switchName))
+            {
+                throw new Exception("switch name not found: " + switchName);
+            }
+
+            dynamic _o;
+            try
+            {
+                _o = ((JObject)o).GetValue(pack.switchValues[switchName]);
+            }
+            catch
+            {
+                throw new Exception("value " + pack.switchValues[switchName] + " not found on a switch");
+            }
+
+            try
+            {
+                return parseType<T>(pack, _o);
+            }
+            catch
+            {
+                throw new Exception("value " + _o.ToString() + " can't be converted to type " + typeof(T).ToString());
+            }
+        }
+
+        Pack LoadPack(string p, PackType type, Dictionary<string, string> switches = null, Dictionary<string, string[]> assertSwitches = null)
         {
             var pack = new Pack() { name = p.Split('\\').Last() };
 
             string pbase = "";
 
             ZipArchive archive = null;
+            IArchive compress = null;
+            archive = null;
             MemoryStream zrpstream = null;
 
             TextureShaderType strToShader(string s)
@@ -202,6 +298,8 @@ namespace TexturedRender
             {
                 if (type == PackType.Folder)
                 {
+                    if (path == null)
+                    { }
                     path = Path.Combine(p, pbase, path);
                     FileStream s;
                     try
@@ -218,7 +316,7 @@ namespace TexturedRender
                     s.Close();
                     return b;
                 }
-                else
+                else if (type == PackType.Zip || type == PackType.Zrp)
                 {
                     path = Path.Combine(pbase, path);
                     Stream s;
@@ -227,6 +325,22 @@ namespace TexturedRender
                         s = archive.GetEntry(path).Open();
                     }
                     catch { throw new Exception("Could not open " + path); }
+                    Bitmap b;
+                    try
+                    {
+                        b = new Bitmap(s);
+                    }
+                    catch { throw new Exception("Corrupt image: " + path); }
+                    s.Close();
+                    return b;
+                }
+                else
+                {
+                    path = Path.Combine(pbase, path).Replace("/", "\\");
+                    Stream s;
+                    var e = compress.Entries.Where(a => a.Key == path).ToArray();
+                    if(e.Length == 0) throw new Exception("Could not open " + path);
+                    s = e[0].OpenEntryStream();
                     Bitmap b;
                     try
                     {
@@ -256,7 +370,7 @@ namespace TexturedRender
                     }
                     catch { throw new Exception("Could not read pack.json file"); }
                 }
-                else
+                else if (type == PackType.Zip || type == PackType.Zrp)
                 {
                     if (type == PackType.Zrp)
                     {
@@ -293,6 +407,25 @@ namespace TexturedRender
                         json = jfile.ReadToEnd();
                     }
                 }
+                else
+                {
+                    if (type == PackType.Rar)
+                        compress = RarArchive.Open(p);
+                    if (type == PackType.SevenZip)
+                        compress = SevenZipArchive.Open(p);
+                    if (type == PackType.Tar)
+                        compress = TarArchive.Open(p);
+
+                    var files = compress.Entries.Where(e => e.Key.EndsWith("\\pack.json") || e.Key == "pack.json").ToArray();
+                    Array.Sort(files.Select(s => s.Key.Length).ToArray(), files);
+                    if (files.Length == 0) throw new Exception("Could not find pack.json file");
+                    var jsonfile = files[0];
+                    pbase = jsonfile.Key.Substring(0, jsonfile.Key.Length - "pack.json".Length);
+                    using (var jfile = new StreamReader(jsonfile.OpenEntryStream()))
+                    {
+                        json = jfile.ReadToEnd();
+                    }
+                }
                 dynamic data;
                 try
                 {
@@ -303,124 +436,176 @@ namespace TexturedRender
                 {
                     pack.description = data.description;
                 }
-                catch { pack.description = "[no description]"; }
+                catch (RuntimeBinderException) { pack.description = "[no description]"; }
+
+
+                #region Switches
+                JArray sw = null;
+                bool swIsArray = false;
+                try
+                {
+                    var s = data.switches;
+                    if (s.GetType() == typeof(JArray)) swIsArray = true;
+                    sw = s;
+                }
+                catch (RuntimeBinderException) { }
+                if (sw != null)
+                {
+                    if (!swIsArray) throw new Exception("switches must be an array");
+                    foreach (dynamic s in sw)
+                    {
+                        string swName = null;
+                        List<string> swVals = new List<string>();
+                        dynamic swValArr;
+                        swName = s.name;
+                        if (swName == null)
+                            throw new Exception("missing property 'name' on switch");
+                        swValArr = s.values;
+                        if (swValArr == null) throw new Exception("missing property 'values' on switch");
+                        if (swValArr.GetType() != typeof(JArray)) throw new Exception("'values' must be a string array");
+                        if (((JArray)swValArr).Count == 0) throw new Exception("'values' array must have at least 1 item");
+                        foreach (dynamic v in (JArray)swValArr)
+                        {
+                            swVals.Add((string)v);
+                        }
+                        pack.switchChoices.Add(swName, swVals.ToArray());
+                        if (assertSwitches != null)
+                            if (!assertSwitches.ContainsKey(swName) || !swVals.SequenceEqual(assertSwitches[swName]))
+                            {
+                                throw new Exception("switches have been changed in pack.json, please reload pack");
+                            }
+                        pack.switchValues.Add(swName, swVals[0]);
+                    }
+                    if (assertSwitches != null)
+                        if (pack.switchValues.Count != assertSwitches.Count)
+                            throw new Exception("switches have been changed in pack.json, please reload pack");
+                        else
+                            pack.switchValues = switches;
+                }
+                #endregion
+
 
                 string pname;
                 try
                 {
-                    pname = data.previewImage;
-                    pack.preview = GetBitmap(pname);
+                    pname = parseType<string>(pack, data.previewImage);
+                    if (pname != null)
+                        pack.preview = GetBitmap(pname);
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
 
                 #region Misc
                 try
                 {
-                    pack.keyboardHeight = (double)data.keyboardHeight / 100;
+                    pack.keyboardHeight = parseType<double>(pack, data.keyboardHeight) / 100;
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 try
                 {
-                    pack.sameWidthNotes = data.sameWidthNotes;
+                    pack.sameWidthNotes = parseType<bool>(pack, data.sameWidthNotes);
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 try
                 {
-                    pack.blackKeysFullOctave = data.blackKeysFullOctave;
+                    pack.blackKeysFullOctave = parseType<bool>(pack, data.blackKeysFullOctave);
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 try
                 {
-                    pack.whiteKeysFullOctave = data.whiteKeysFullOctave;
+                    pack.whiteKeysFullOctave = parseType<bool>(pack, data.whiteKeysFullOctave);
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 try
                 {
-                    pack.blackKeyHeight = (double)data.blackKeyHeight / 100;
+                    pack.blackKeyHeight = parseType<double>(pack, data.blackKeyHeight) / 100;
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 try
                 {
-                    pack.blackKeyDefaultWhite = data.blackKeysWhiteShade;
+                    pack.blackKeyDefaultWhite = parseType<bool>(pack, data.blackKeysWhiteShade);
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 #endregion
 
                 #region Shaders
                 string shader = null;
                 try
                 {
-                    shader = data.noteShader;
+                    shader = parseType<string>(pack, data.noteShader);
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 if (shader != null) pack.noteShader = strToShader(shader);
                 shader = null;
                 try
                 {
-                    shader = data.whiteKeyShader;
+                    shader = parseType<string>(pack, data.whiteKeyShader);
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 if (shader != null) pack.whiteKeyShader = strToShader(shader);
                 shader = null;
                 try
                 {
-                    shader = data.blackKeyShader;
+                    shader = parseType<string>(pack, data.blackKeyShader);
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 if (shader != null) pack.blackKeyShader = strToShader(shader);
                 #endregion
 
                 #region Get Keys
                 try
                 {
-                    pname = data.blackKey;
+                    pname = parseType<string>(pack, data.blackKey);
                 }
-                catch { throw new Exception("Missing property \"blackKey\""); }
+                catch (RuntimeBinderException) { throw new Exception("Missing property \"blackKey\""); }
                 pack.blackKeyTex = GetBitmap(pname);
                 try
                 {
-                    pname = data.blackKeyPressed;
+                    pname = parseType<string>(pack, data.blackKeyPressed);
                 }
-                catch { throw new Exception("Missing property \"blackKeyPressed\""); }
+                catch (RuntimeBinderException) { throw new Exception("Missing property \"blackKeyPressed\""); }
                 pack.blackKeyPressedTex = GetBitmap(pname);
                 try
                 {
-                    pname = data.whiteKey;
+                    pname = parseType<string>(pack, data.whiteKey);
                 }
-                catch { throw new Exception("Missing property \"whiteKey\""); }
+                catch (RuntimeBinderException) { throw new Exception("Missing property \"whiteKey\""); }
                 pack.whiteKeyTex = GetBitmap(pname);
                 try
                 {
-                    pname = data.whiteKeyPressed;
+                    pname = parseType<string>(pack, data.whiteKeyPressed);
                 }
-                catch { throw new Exception("Missing property \"whiteKeyPressed\""); }
+                catch (RuntimeBinderException) { throw new Exception("Missing property \"whiteKeyPressed\""); }
                 pack.whiteKeyPressedTex = GetBitmap(pname);
 
                 try
                 {
-                    pname = data.whiteKeyLeft;
-                    pack.whiteKeyLeftTex = GetBitmap(pname);
+                    pname = parseType<string>(pack, data.whiteKeyLeft);
+                    if (pname != null)
+                        pack.whiteKeyLeftTex = GetBitmap(pname);
                 }
-                catch { pack.whiteKeyLeftTex = null; }
+                catch (RuntimeBinderException) { pack.whiteKeyLeftTex = null; }
                 try
                 {
-                    pname = data.whiteKeyLeftPressed;
-                    pack.whiteKeyPressedLeftTex = GetBitmap(pname);
+                    pname = parseType<string>(pack, data.whiteKeyLeftPressed);
+                    if (pname != null)
+                        pack.whiteKeyPressedLeftTex = GetBitmap(pname);
                 }
-                catch { pack.whiteKeyPressedLeftTex = null; }
+                catch (RuntimeBinderException) { pack.whiteKeyPressedLeftTex = null; }
 
                 try
                 {
-                    pname = data.whiteKeyRight;
-                    pack.whiteKeyRightTex = GetBitmap(pname);
+                    pname = parseType<string>(pack, data.whiteKeyRight);
+                    if (pname != null)
+                        pack.whiteKeyRightTex = GetBitmap(pname);
                 }
-                catch { pack.whiteKeyRightTex = null; }
+                catch (RuntimeBinderException) { pack.whiteKeyRightTex = null; }
                 try
                 {
-                    pname = data.whiteKeyRightPressed;
-                    pack.whiteKeyPressedRightTex = GetBitmap(pname);
+                    pname = parseType<string>(pack, data.whiteKeyRightPressed);
+                    if (pname != null)
+                        pack.whiteKeyPressedRightTex = GetBitmap(pname);
                 }
-                catch { pack.whiteKeyPressedRightTex = null; }
+                catch (RuntimeBinderException) { pack.whiteKeyPressedRightTex = null; }
 
                 if ((pack.whiteKeyLeftTex == null) ^ (pack.whiteKeyPressedLeftTex == null))
                     if (pack.whiteKeyLeftTex == null)
@@ -439,42 +624,98 @@ namespace TexturedRender
                 #region Oversizes
                 try
                 {
-                    pack.whiteKeyOversize = (double)data.whiteKeyOversize / 100;
+                    pack.whiteKeyOversize = parseType<double>(pack, data.whiteKeyOversize) / 100;
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 try
                 {
-                    pack.blackKeyOversize = (double)data.blackKeyOversize / 100;
+                    pack.blackKeyOversize = parseType<double>(pack, data.blackKeyOversize) / 100;
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 try
                 {
-                    pack.whiteKeyPressedOversize = (double)data.whiteKeyPressedOversize / 100;
+                    pack.whiteKeyPressedOversize = parseType<double>(pack, data.whiteKeyPressedOversize) / 100;
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 try
                 {
-                    pack.blackKeyPressedOversize = (double)data.blackKeyPressedOversize / 100;
+                    pack.blackKeyPressedOversize = parseType<double>(pack, data.blackKeyPressedOversize) / 100;
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
                 #endregion
 
                 #region Bar
                 try
                 {
-                    pname = data.bar;
-                    pack.barTex = GetBitmap(pname);
+                    pname = parseType<string>(pack, data.bar);
                     pack.useBar = true;
                 }
-                catch { }
+                catch (RuntimeBinderException) { }
 
                 if (pack.useBar)
                 {
+                    pack.barTex = GetBitmap(pname);
                     try
                     {
-                        pack.barHeight = (double)data.barHeight / 100;
+                        pack.barHeight = parseType<double>(pack, data.barHeight) / 100;
                     }
-                    catch { }
+                    catch (RuntimeBinderException) { }
+                }
+                #endregion
+
+                #region Overlays
+                JArray overlaysArray = null;
+                bool notArray = false;
+                try
+                {
+                    var _array = data.overlays;
+                    if (_array != null)
+                    {
+                        notArray = _array.GetType() != typeof(JArray);
+                        if (!notArray) overlaysArray = _array;
+                    }
+                }
+                catch (RuntimeBinderException) { }
+                if (overlaysArray != null)
+                {
+                    if (notArray) throw new Exception("overlays must be an array");
+                    pack.OverlayTextures = overlaysArray.Select((dynamic o) =>
+                    {
+                        o = parseType<JObject>(pack, o);
+                        var overlay = new KeyboardOverlay();
+                        try
+                        {
+                            overlay.firstKey = parseType<int>(pack, o.firstKey);
+                        }
+                        catch (RuntimeBinderException) { throw new Exception("firstKey missing on one of the overlay textures"); }
+                        try
+                        {
+                            overlay.lastKey = parseType<int>(pack, o.lastKey);
+                        }
+                        catch (RuntimeBinderException) { throw new Exception("lastKey missing on one of the overlay textures"); }
+
+                        try
+                        {
+                            pname = parseType<string>(pack, o.texture);
+                        }
+                        catch (RuntimeBinderException) { throw new Exception("\"texture\" missing on one of the overlay textures"); }
+
+                        overlay.tex = GetBitmap(pname);
+
+                        try
+                        {
+                            overlay.alpha = parseType<double>(pack, o.alpha);
+                        }
+                        catch (RuntimeBinderException) { }
+
+                        overlay.texAspect = overlay.tex.Width / (double)overlay.tex.Height;
+
+                        return overlay;
+                    }).ToArray();
+                }
+                else
+                {
+                    pack.OverlayTextures = new KeyboardOverlay[0];
                 }
                 #endregion
 
@@ -482,68 +723,69 @@ namespace TexturedRender
                 JArray noteSizes;
                 try
                 {
-                    noteSizes = data.notes;
+                    noteSizes = parseType<JArray>(pack, data.notes);
                 }
-                catch { throw new Exception("Missing Array Property \"notes\""); }
+                catch (RuntimeBinderException) { throw new Exception("Missing Array Property \"notes\""); }
                 if (noteSizes.Count == 0) throw new Exception("Note textures array can't be 0");
                 if (noteSizes.Count > 4) throw new Exception("Only up to 4 note textures are supported");
 
                 List<NoteTexture> noteTex = new List<NoteTexture>();
                 bool hasBothKeyType = false;
-                foreach (dynamic s in noteSizes)
+                foreach (dynamic _s in noteSizes)
                 {
+                    dynamic s = parseType<JObject>(pack, _s);
                     NoteTexture tex = new NoteTexture();
                     try
                     {
-                        tex.useCaps = (bool)s.useEndCaps;
+                        tex.useCaps = parseType<bool>(pack, s.useEndCaps);
                     }
-                    catch { throw new Exception("Missing property \"useEndCaps\" in note size textures"); }
+                    catch (RuntimeBinderException) { throw new Exception("Missing property \"useEndCaps\" in note size textures"); }
                     try
                     {
-                        tex.stretch = (bool)s.alwaysStretch;
+                        tex.stretch = parseType<bool>(pack, s.alwaysStretch);
                     }
-                    catch { throw new Exception("Missing property \"alwaysStretch\" in note size textures"); }
+                    catch (RuntimeBinderException) { throw new Exception("Missing property \"alwaysStretch\" in note size textures"); }
                     try
                     {
-                        tex.maxSize = (double)s.maxSize;
+                        tex.maxSize = parseType<double>(pack, s.maxSize);
                     }
-                    catch { throw new Exception("Missing property \"maxSize\" in note size textures"); }
+                    catch (RuntimeBinderException) { throw new Exception("Missing property \"maxSize\" in note size textures"); }
 
                     try
                     {
-                        pname = s.middleTexture;
+                        pname = parseType<string>(pack, s.middleTexture);
                     }
-                    catch { throw new Exception("Missing property \"middleTexture\""); }
+                    catch (RuntimeBinderException) { throw new Exception("Missing property \"middleTexture\""); }
                     tex.noteMiddleTex = GetBitmap(pname);
                     tex.noteMiddleAspect = (double)tex.noteMiddleTex.Height / tex.noteMiddleTex.Width;
 
                     try
                     {
-                        tex.darkenBlackNotes = (double)s.darkenBlackNotes;
+                        tex.darkenBlackNotes = parseType<double>(pack, s.darkenBlackNotes);
                     }
-                    catch { }
+                    catch (RuntimeBinderException) { }
 
                     try
                     {
-                        tex.highlightHitNotes = (double)s.highlightHitNotes;
+                        tex.highlightHitNotes = parseType<double>(pack, s.highlightHitNotes);
                     }
-                    catch { }
+                    catch (RuntimeBinderException) { }
                     if (tex.highlightHitNotes > 1 || tex.highlightHitNotes < 0) throw new Exception("highlightHitNotes must be between 0 and 1");
 
                     JArray array = null;
-                    bool notArray = false;
                     try
                     {
-                        var _array = s.highlightHitNotesColor;
+                        var _array = parseType<JArray>(pack, s.highlightHitNotesColor);
                         if (_array != null)
                         {
                             notArray = _array.GetType() != typeof(JArray);
                             if (!notArray) array = _array;
                         }
                     }
-                    catch { if (notArray) throw new Exception("highlightHitNotes must be an array of 3 numbers (RGB or RGBA, e.g. [255, 255, 255, 100])"); }
+                    catch (RuntimeBinderException) { }
                     if (array != null)
                     {
+                        if (notArray) throw new Exception("highlightHitNotes must be an array of 3 numbers (RGB or RGBA, e.g. [255, 255, 255, 100])");
                         if (!(array.Count == 3)) throw new Exception("highlightHitNotes must be an array of 3-4 numbers (RGB or RGBA, e.g. [255, 255, 255, 100])");
                         else
                         {
@@ -553,16 +795,16 @@ namespace TexturedRender
 
                     try
                     {
-                        tex.squeezeEndCaps = (bool)s.squeezeEndCaps;
+                        tex.squeezeEndCaps = parseType<bool>(pack, s.squeezeEndCaps);
                     }
-                    catch { }
+                    catch (RuntimeBinderException) { }
 
                     string keyType = null;
                     try
                     {
-                        keyType = (string)s.keyType;
+                        keyType = parseType<string>(pack, s.keyType);
                     }
-                    catch { }
+                    catch (RuntimeBinderException) { }
                     if (keyType != null) tex.keyType = strToKeyType(keyType);
                     if (tex.keyType == KeyType.Both) hasBothKeyType = true;
 
@@ -570,29 +812,29 @@ namespace TexturedRender
                     {
                         try
                         {
-                            pname = s.topTexture;
+                            pname = parseType<string>(pack, s.topTexture);
                         }
-                        catch { throw new Exception("Missing property \"topTexture\""); }
+                        catch (RuntimeBinderException) { throw new Exception("Missing property \"topTexture\""); }
                         tex.noteTopTex = GetBitmap(pname);
                         try
                         {
-                            pname = s.bottomTexture;
+                            pname = parseType<string>(pack, s.bottomTexture);
                         }
-                        catch { throw new Exception("Missing property \"bottomTexture\""); }
+                        catch (RuntimeBinderException) { throw new Exception("Missing property \"bottomTexture\""); }
                         tex.noteBottomTex = GetBitmap(pname);
                         tex.noteTopAspect = (double)tex.noteTopTex.Height / tex.noteTopTex.Width;
                         tex.noteBottomAspect = (double)tex.noteBottomTex.Height / tex.noteBottomTex.Width;
 
                         try
                         {
-                            tex.noteTopOversize = (double)s.topOversize;
+                            tex.noteTopOversize = parseType<double>(pack, s.topOversize);
                         }
-                        catch { throw new Exception("Missing property \"topOversize\" in note size textures"); }
+                        catch (RuntimeBinderException) { throw new Exception("Missing property \"topOversize\" in note size textures"); }
                         try
                         {
-                            tex.noteBottomOversize = (double)s.bottomOversize;
+                            tex.noteBottomOversize = parseType<double>(pack, s.bottomOversize);
                         }
-                        catch { throw new Exception("Missing property \"bottomOversize\" in note size textures"); }
+                        catch (RuntimeBinderException) { throw new Exception("Missing property \"bottomOversize\" in note size textures"); }
                     }
                     noteTex.Add(tex);
                 }
@@ -631,33 +873,106 @@ namespace TexturedRender
                     archive.Dispose();
                 if (zrpstream != null)
                     zrpstream.Dispose();
+                if (compress != null)
+                    compress.Dispose();
             }
             return pack;
         }
 
         private void PluginList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            LoadSelectedPack();
+        }
+
+        private void ReloadPackButton_Click(object sender, RoutedEventArgs e)
+        {
+            LoadSelectedPack();
+        }
+
+        void LoadSelectedPack()
+        {
             try
             {
-                var pack = resourcePacks[pluginList.SelectedIndex];
+                var p = resourcePacks[pluginList.SelectedIndex];
+                if (settings.currPack != null) UnloadPack(settings.currPack);
+                var pack = LoadPack(p.filename, p.type);
                 if (!pack.error)
                 {
                     pluginDesc.Foreground = Brushes.Black;
                     settings.currPack = pack;
+                    settings.lastPackChangeTime = DateTime.Now.Ticks;
                 }
                 else
                 {
                     pluginDesc.Foreground = Brushes.Red;
                     settings.currPack = null;
+                    settings.lastPackChangeTime = DateTime.Now.Ticks;
                 }
                 if (pack.preview == null)
                     previewImg.Source = null;
                 else
                     previewImg.Source = BitmapToImageSource(pack.preview);
+                switchTab.Visibility = Visibility.Collapsed;
+                switchPanel.Children.Clear();
+                if (pack.switchChoices != null && pack.switchChoices.Count != 0)
+                {
+                    switchTab.Visibility = Visibility.Visible;
+                    foreach (var s in pack.switchChoices.Keys)
+                    {
+                        var menu = new ComboBox();
+                        menu.Tag = s;
+                        foreach (var v in pack.switchChoices[s])
+                        {
+                            menu.Items.Add(new ComboBoxItem() { Content = v });
+                        }
+                        var dock = new DockPanel();
+                        dock.HorizontalAlignment = HorizontalAlignment.Left;
+                        dock.Children.Add(new Label() { Content = s });
+                        dock.Children.Add(menu);
+                        switchPanel.Children.Add(dock);
+                        menu.SelectedIndex = 0;
+                        pack.switchValues[s] = pack.switchChoices[s][0];
+                        menu.SelectionChanged += Menu_SelectionChanged;
+                    }
+                }
                 pluginDesc.Text = pack.description;
-                settings.lastPackChangeTime = DateTime.Now.Ticks;
             }
             catch { }
+        }
+
+        private void Menu_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (settings.currPack != null)
+            {
+                var p = resourcePacks[pluginList.SelectedIndex];
+                var choices = settings.currPack.switchChoices;
+                var vals = settings.currPack.switchValues;
+
+                var box = (ComboBox)sender;
+                var tag = (string)box.Tag;
+                vals[tag] = choices[tag][box.SelectedIndex];
+
+                UnloadPack(settings.currPack);
+                var pack = LoadPack(p.filename, p.type, vals, choices);
+                if (!pack.error)
+                {
+                    pluginDesc.Text = pack.description;
+                    pluginDesc.Foreground = Brushes.Black;
+                    settings.currPack = pack;
+                    settings.lastPackChangeTime = DateTime.Now.Ticks;
+                }
+                else
+                {
+                    pluginDesc.Text = pack.description;
+                    pluginDesc.Foreground = Brushes.Red;
+                    settings.currPack = null;
+                    settings.lastPackChangeTime = DateTime.Now.Ticks;
+                }
+                if (pack.preview == null)
+                    previewImg.Source = null;
+                else
+                    previewImg.Source = BitmapToImageSource(pack.preview);
+            }
         }
 
         public void SetValues()
