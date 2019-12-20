@@ -39,6 +39,8 @@ namespace TexturedRender
         public string Description => "Plugin for loading and rendering custom resource packs, " +
             "with settings defined in a .json file";
 
+        public string LanguageDictName { get; } = "textured";
+
         #region Shaders
         string quadShaderVert = @"#version 330 core
 
@@ -496,8 +498,10 @@ void main()
         }
 
         Color4[] keyColors = new Color4[514];
-        double[] x1array = new double[257];
-        double[] wdtharray = new double[257];
+        double[] x1arrayKeys = new double[257];
+        double[] x1arrayNotes = new double[257];
+        double[] wdtharrayKeys = new double[257];
+        double[] wdtharrayNotes = new double[257];
         double maxTopCapSize = 0;
         double maxBottomCapSize = 0;
 
@@ -538,12 +542,12 @@ void main()
             if (blackKeys[lastNote - 1] || (currPack.whiteKeysFullOctave && currPack.whiteKeyRightTex == null)) kblastNote++;
 
             double deltaTimeOnScreen = settings.deltaTimeOnScreen;
-            double keyboardHeightFull = currPack.keyboardHeight / (lastNote - firstNote) * 128;
+            double viewAspect = (double)renderSettings.width / renderSettings.height;
+            double keyboardHeightFull = currPack.keyboardHeight / (lastNote - firstNote) * 128 / (1920.0 / 1080.0) * viewAspect;
             double keyboardHeight = keyboardHeightFull;
             double barHeight = keyboardHeightFull * currPack.barHeight;
             if (currPack.useBar) keyboardHeight -= barHeight;
             bool sameWidth = currPack.sameWidthNotes;
-            double viewAspect = (double)renderSettings.width / renderSettings.height;
             for (int i = 0; i < 514; i++) keyColors[i] = Color4.Transparent;
             double wdth;
             float r, g, b, a, r2, g2, b2, a2;
@@ -553,42 +557,66 @@ void main()
             double y2;
             int pos;
             quadBufferPos = 0;
+            bool interpolateUnendedNotes = currPack.interpolateUnendedNotes != 0;
+            float interpolateUnendedNotesVal = 1.0f / renderSettings.fps / currPack.interpolateUnendedNotes;
 
             if (sameWidth)
             {
                 for (int i = 0; i < 257; i++)
                 {
-                    x1array[i] = (float)(i - firstNote) / (lastNote - firstNote);
-                    wdtharray[i] = 1.0f / (lastNote - firstNote);
+                    x1arrayKeys[i] = (float)(i - firstNote) / (lastNote - firstNote);
+                    wdtharrayKeys[i] = 1.0f / (lastNote - firstNote);
+                    x1arrayNotes[i] = (float)(i - firstNote) / (lastNote - firstNote);
+                    wdtharrayNotes[i] = 1.0f / (lastNote - firstNote);
                 }
             }
             else
             {
-                double knmfn = keynum[firstNote];
-                double knmln = keynum[lastNote - 1];
-                if (blackKeys[firstNote]) knmfn = keynum[firstNote - 1] + 0.5;
-                if (blackKeys[lastNote - 1]) knmln = keynum[lastNote] - 0.5;
                 for (int i = 0; i < 257; i++)
                 {
                     if (!blackKeys[i])
                     {
-                        x1array[i] = (float)(keynum[i] - knmfn) / (knmln - knmfn + 1);
-                        wdtharray[i] = 1.0f / (knmln - knmfn + 1);
+                        x1arrayKeys[i] = keynum[i];
+                        x1arrayNotes[i] = keynum[i];
+                        wdtharrayKeys[i] = 1.0f;
+                        wdtharrayNotes[i] = 1.0f;
                     }
                     else
                     {
                         int _i = i + 1;
-                        wdth = 0.6f / (knmln - knmfn + 1);
+                        wdth = currPack.blackKeyScale;
                         int bknum = keynum[i] % 5;
                         double offset = wdth / 2;
-                        if (bknum == 0) offset += offset * 0.3;
-                        if (bknum == 2) offset += offset * 0.5;
-                        if (bknum == 1) offset -= offset * 0.3;
-                        if (bknum == 4) offset -= offset * 0.5;
+                        if (bknum == 0) offset += wdth / 2 * currPack.blackKey2setOffset;
+                        if (bknum == 2) offset += wdth / 2 * currPack.blackKey3setOffset;
+                        if (bknum == 1) offset -= wdth / 2 * currPack.blackKey2setOffset;
+                        if (bknum == 4) offset -= wdth / 2 * currPack.blackKey3setOffset;
 
-                        x1array[i] = (float)(keynum[_i] - knmfn) / (knmln - knmfn + 1) - offset;
-                        wdtharray[i] = wdth;
+                        offset -= currPack.advancedBlackKeyOffsets[keynum[i] % 5] * wdth / 2;
+
+                        x1arrayKeys[i] = keynum[_i] - offset;
+                        wdtharrayKeys[i] = wdth;
+
+                        offset -= wdth / 2 * (1 - currPack.blackNoteScale);
+                        if (bknum == 0) offset += wdth / 2 * currPack.blackNote2setOffset;
+                        if (bknum == 2) offset += wdth / 2 * currPack.blackNote3setOffset;
+                        if (bknum == 1) offset -= wdth / 2 * currPack.blackNote2setOffset;
+                        if (bknum == 4) offset -= wdth / 2 * currPack.blackNote3setOffset;
+                        wdth *= currPack.blackNoteScale;
+
+                        x1arrayNotes[i] = (float)keynum[_i] - offset;
+                        wdtharrayNotes[i] = wdth;
                     }
+                }
+                double knmfn = x1arrayKeys[firstNote];
+                double knmln = x1arrayKeys[lastNote - 1] + wdtharrayKeys[lastNote - 1];
+                double width = knmln - knmfn;
+                for (int i = 0; i < 257; i++)
+                {
+                    x1arrayKeys[i] = (x1arrayKeys[i] - knmfn) / width;
+                    x1arrayNotes[i] = (x1arrayNotes[i] - knmfn) / width;
+                    wdtharrayKeys[i] /= width;
+                    wdtharrayNotes[i] /= width;
                 }
             }
 
@@ -602,9 +630,9 @@ void main()
             maxBottomCapSize = 0;
             foreach (var tex in currPack.NoteTextures)
             {
-                var topSize = tex.noteTopAspect * viewAspect * wdtharray[5] / notePosFactor;
+                var topSize = tex.noteTopAspect * viewAspect * wdtharrayNotes[5] / notePosFactor;
                 if (tex.squeezeEndCaps) topSize *= tex.noteTopOversize;
-                var bottomSize = tex.noteBottomAspect * viewAspect * wdtharray[5] / notePosFactor;
+                var bottomSize = tex.noteBottomAspect * viewAspect * wdtharrayNotes[5] / notePosFactor;
                 if (tex.squeezeEndCaps) bottomSize *= tex.noteBottomOversize;
                 if (maxTopCapSize < topSize) maxTopCapSize = topSize;
                 if (maxBottomCapSize < bottomSize) maxBottomCapSize = bottomSize;
@@ -658,7 +686,7 @@ void main()
                                     coll.G * blendfac + origcoll.G * revblendfac,
                                     coll.B * blendfac + origcoll.B * revblendfac,
                                     1);
-                                blendfac = colr.A * 0.8f;
+                                blendfac = colr.A;
                                 revblendfac = 1 - blendfac;
                                 keyColors[k * 2 + 1] = new Color4(
                                     colr.R * blendfac + origcolr.R * revblendfac,
@@ -666,13 +694,24 @@ void main()
                                     colr.B * blendfac + origcolr.B * revblendfac,
                                     1);
                             }
-                            x1 = x1array[k];
-                            wdth = wdtharray[k];
+                            x1 = x1arrayNotes[k];
+                            wdth = wdtharrayNotes[k];
                             x2 = x1 + wdth;
                             y1 = 1 - (renderCutoff - n.end) * notePosFactor;
                             y2 = 1 - (renderCutoff - n.start) * notePosFactor;
                             if (!n.hasEnded)
-                                y1 = 1;
+                            {
+                                y1 = 1.0;
+                                if (interpolateUnendedNotes)
+                                    n.meta = 1.0f;
+                            }
+                            else if (interpolateUnendedNotes)
+                            {
+                                if (n.meta == null) n.meta = 0f;
+                                n.meta = (float)n.meta - interpolateUnendedNotesVal;
+                                if ((float)n.meta < 0f) n.meta = 0f;
+                                y1 = 1.0 * (float)n.meta + y1 * (1 - (float)n.meta);
+                            }
                             double texSize = (y1 - y2) / wdth / viewAspect;
                             NoteTexture ntex = null;
                             int tex = 0;
@@ -929,6 +968,8 @@ void main()
             LastNoteCount = nc;
             #endregion
 
+            RenderOverlays(true);
+
             #region Keyboard
 
             GL.UseProgram(quadShader);
@@ -1013,8 +1054,8 @@ void main()
             float pressed;
             for (int n = kbfirstNote; n < kblastNote; n++)
             {
-                x1 = x1array[n];
-                wdth = wdtharray[n];
+                x1 = x1arrayKeys[n];
+                wdth = wdtharrayKeys[n];
                 x2 = x1 + wdth;
 
                 if (!blackKeys[n])
@@ -1084,15 +1125,19 @@ void main()
                 else if (currPack.whiteKeyRightTex != null && n == kblastNote - 1 && !blackKeys[n])
                     pressed += 4;
 
+                double yy1 = y1;
+                if (pressed == 1) yy1 += keyboardHeightFull * currPack.whiteKeyPressedOversize;
+                else yy1 += keyboardHeightFull * currPack.whiteKeyOversize;
+
                 pos = quadBufferPos * 8;
                 quadVertexbuff[pos++] = x1;
                 quadVertexbuff[pos++] = y2;
                 quadVertexbuff[pos++] = x2;
                 quadVertexbuff[pos++] = y2;
                 quadVertexbuff[pos++] = x2;
-                quadVertexbuff[pos++] = y1;
+                quadVertexbuff[pos++] = yy1;
                 quadVertexbuff[pos++] = x1;
-                quadVertexbuff[pos++] = y1;
+                quadVertexbuff[pos++] = yy1;
 
                 pos = quadBufferPos * 16;
                 quadColorbuff[pos++] = r;
@@ -1156,8 +1201,8 @@ void main()
             GL.BindTexture(TextureTarget.Texture2D, currPack.blackKeyTexID);
             for (int n = kbfirstNote; n < kblastNote; n++)
             {
-                x1 = x1array[n];
-                wdth = wdtharray[n];
+                x1 = x1arrayKeys[n];
+                wdth = wdtharrayKeys[n];
                 x2 = x1 + wdth;
 
                 if (blackKeys[n])
@@ -1272,19 +1317,55 @@ void main()
             FlushQuadBuffer(false);
             #endregion
 
-            #region Overlays
+            RenderOverlays(false);
+
+            GL.ActiveTexture(TextureUnit.Texture0);
+            GL.Disable(EnableCap.Blend);
+            GL.DisableClientState(ArrayCap.VertexArray);
+            GL.DisableClientState(ArrayCap.ColorArray);
+            GL.Disable(EnableCap.Texture2D);
+
+            GL.DisableVertexAttribArray(0);
+            GL.DisableVertexAttribArray(1);
+            GL.DisableVertexAttribArray(2);
+            GL.DisableVertexAttribArray(3);
+        }
+
+        void RenderOverlays(bool below)
+        {
+            double getx1(int key)
+            {
+                int k = key % 12;
+                if (k < 0) k += 12;
+                int o = (key - k) / 12;
+
+                return x1arrayKeys[k] + (x1arrayKeys[12] - x1arrayKeys[0]) * o;
+            }
+
+            double getwdth(int key)
+            {
+                int k = key % 12;
+                if (k < 0) k += 12;
+                if (isBlackNote(k)) return wdtharrayKeys[1];
+                else return wdtharrayKeys[0];
+            }
+
+            double viewAspect = (double)renderSettings.width / renderSettings.height;
             foreach (var o in currPack.OverlayTextures)
             {
+                if (o.overlayBelow != below) continue;
+                int pos;
                 GL.UseProgram(quadShader);
                 GL.ActiveTexture(TextureUnit.Texture0);
                 GL.BindTexture(TextureTarget.Texture2D, o.texID);
                 pos = quadBufferPos * 8;
-                double start = x1array[o.firstKey];
-                double end = x1array[o.lastKey] + wdtharray[o.lastKey];
+                double start = getx1(o.firstKey);
+                double end = getx1(o.lastKey) + getwdth(o.lastKey);
+                double height = Math.Abs(start - end) / o.texAspect * viewAspect;
                 quadVertexbuff[pos++] = start;
-                quadVertexbuff[pos++] = Math.Abs(start - end) * o.texAspect / viewAspect;
+                quadVertexbuff[pos++] = height;
                 quadVertexbuff[pos++] = end;
-                quadVertexbuff[pos++] = Math.Abs(start - end) * o.texAspect / viewAspect;
+                quadVertexbuff[pos++] = height;
                 quadVertexbuff[pos++] = end;
                 quadVertexbuff[pos++] = 0;
                 quadVertexbuff[pos++] = start;
@@ -1326,18 +1407,6 @@ void main()
                 quadBufferPos++;
                 FlushQuadBuffer(false);
             }
-            #endregion
-
-            GL.ActiveTexture(TextureUnit.Texture0);
-            GL.Disable(EnableCap.Blend);
-            GL.DisableClientState(ArrayCap.VertexArray);
-            GL.DisableClientState(ArrayCap.ColorArray);
-            GL.Disable(EnableCap.Texture2D);
-
-            GL.DisableVertexAttribArray(0);
-            GL.DisableVertexAttribArray(1);
-            GL.DisableVertexAttribArray(2);
-            GL.DisableVertexAttribArray(3);
         }
 
         void FlushQuadBuffer(bool check = true)

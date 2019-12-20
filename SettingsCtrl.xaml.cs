@@ -270,7 +270,6 @@ namespace TexturedRender
         Pack LoadPack(string p, PackType type, Dictionary<string, string> switches = null, Dictionary<string, string[]> assertSwitches = null)
         {
             var pack = new Pack() { name = p.Split('\\').Last() };
-
             string pbase = "";
 
             ZipArchive archive = null;
@@ -339,7 +338,7 @@ namespace TexturedRender
                     path = Path.Combine(pbase, path).Replace("/", "\\");
                     Stream s;
                     var e = compress.Entries.Where(a => a.Key == path).ToArray();
-                    if(e.Length == 0) throw new Exception("Could not open " + path);
+                    if (e.Length == 0) throw new Exception("Could not open " + path);
                     s = e[0].OpenEntryStream();
                     Bitmap b;
                     try
@@ -525,6 +524,11 @@ namespace TexturedRender
                     pack.blackKeyDefaultWhite = parseType<bool>(pack, data.blackKeysWhiteShade);
                 }
                 catch (RuntimeBinderException) { }
+                try
+                {
+                    pack.interpolateUnendedNotes = parseType<float>(pack, data.interpolateUnendedNotes);
+                }
+                catch (RuntimeBinderException) { }
                 #endregion
 
                 #region Shaders
@@ -644,6 +648,46 @@ namespace TexturedRender
                 catch (RuntimeBinderException) { }
                 #endregion
 
+                #region Black Key Sizes
+                try
+                {
+                    pack.blackKey2setOffset = parseType<double>(pack, data.blackKey2setOffset);
+                }
+                catch (RuntimeBinderException) { }
+                try
+                {
+                    pack.blackKey3setOffset = parseType<double>(pack, data.blackKey3setOffset);
+                }
+                catch (RuntimeBinderException) { }
+                try
+                {
+                    pack.blackKeyScale = parseType<double>(pack, data.blackKeyScale);
+                }
+                catch (RuntimeBinderException) { }
+                try
+                {
+                    pack.blackNote2setOffset = parseType<double>(pack, data.blackNote2setOffset);
+                }
+                catch (RuntimeBinderException) { }
+                try
+                {
+                    pack.blackNote3setOffset = parseType<double>(pack, data.blackNote3setOffset);
+                }
+                catch (RuntimeBinderException) { }
+                try
+                {
+                    pack.blackNoteScale = parseType<double>(pack, data.blackNoteScale);
+                }
+                catch (RuntimeBinderException) { }
+                try
+                {
+                    JArray offsets = parseType<JArray>(pack, data.advancedBlackKeyOffsets);
+                    if (offsets.Count != 5) throw new Exception("advancedBlackKeyOffsets must have 5 elements");
+                    pack.advancedBlackKeyOffsets = offsets.Select(s => (double)s).ToArray();
+                }
+                catch (RuntimeBinderException) { }
+                #endregion
+
                 #region Bar
                 try
                 {
@@ -668,7 +712,7 @@ namespace TexturedRender
                 bool notArray = false;
                 try
                 {
-                    var _array = data.overlays;
+                    var _array = parseType<JArray>(pack, data.overlays);
                     if (_array != null)
                     {
                         notArray = _array.GetType() != typeof(JArray);
@@ -693,6 +737,12 @@ namespace TexturedRender
                             overlay.lastKey = parseType<int>(pack, o.lastKey);
                         }
                         catch (RuntimeBinderException) { throw new Exception("lastKey missing on one of the overlay textures"); }
+
+                        try
+                        {
+                            overlay.overlayBelow = parseType<bool>(pack, o.belowKeyboard);
+                        }
+                        catch (RuntimeBinderException) { }
 
                         try
                         {

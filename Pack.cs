@@ -31,6 +31,7 @@ namespace TexturedRender
         public int firstKey;
         public int lastKey;
         public double alpha = 1;
+        public bool overlayBelow = false;
         public Bitmap tex;
         public int texID;
         public double texAspect;
@@ -85,6 +86,16 @@ namespace TexturedRender
         public TextureShaderType blackKeyShader = TextureShaderType.Normal;
         public bool blackKeyDefaultWhite = false;
 
+        public double blackKey2setOffset = 0.3;
+        public double blackKey3setOffset = 0.5;
+        public double blackKeyScale = 0.6;
+
+        public double blackNote2setOffset = 0;
+        public double blackNote3setOffset = 0;
+        public double blackNoteScale = 1;
+
+        public double[] advancedBlackKeyOffsets = new double[] { 0, 0, 0, 0, 0 };
+
         public Bitmap whiteKeyTex;
         public int whiteKeyTexID;
         public double whiteKeyOversize = 0;
@@ -115,6 +126,8 @@ namespace TexturedRender
         public int whiteKeyRightTexID;
         public Bitmap whiteKeyPressedRightTex = null;
         public int whiteKeyPressedRightTexID;
+
+        public float interpolateUnendedNotes = 0;
 
         public bool whiteKeysFullOctave = false;
         public bool blackKeysFullOctave = false;
